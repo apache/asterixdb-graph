@@ -1,0 +1,12 @@
+opttest
+target
+build
+
+.classpath
+.settings
+.project
+.idea
+.DS_Store
+
+*.swp
+*.iml
