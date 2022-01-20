@@ -27,7 +27,7 @@
 
   <groupId>org.apache.asterix</groupId>
   <artifactId>asterix-opt-bom</artifactId>
-  <version>0.9.7-SNAPSHOT</version>
+  <version>0.9.8-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>asterix-opt-bom</name>
   <description>Graphix (Graph Extension to AsterixDB)</description>

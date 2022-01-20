@@ -27,8 +27,8 @@
 
   <artifactId>asterix-graphix</artifactId>
   <properties>
-    <asterix.version>0.9.7-SNAPSHOT</asterix.version>
-    <hyracks.version>0.3.7-SNAPSHOT</hyracks.version>
+    <asterix.version>0.9.8-SNAPSHOT</asterix.version>
+    <hyracks.version>0.3.8-SNAPSHOT</hyracks.version>
   </properties>
 
   <build>
