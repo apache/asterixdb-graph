@@ -1,0 +1,12 @@
+{ "u1_user_id": 1, "u2_user_id": 2 }
+{ "u1_user_id": 1, "u2_user_id": 3 }
+{ "u1_user_id": 1, "u2_user_id": 4 }
+{ "u1_user_id": 2, "u2_user_id": 1 }
+{ "u1_user_id": 2, "u2_user_id": 3 }
+{ "u1_user_id": 2, "u2_user_id": 4 }
+{ "u1_user_id": 3, "u2_user_id": 1 }
+{ "u1_user_id": 3, "u2_user_id": 2 }
+{ "u1_user_id": 3, "u2_user_id": 4 }
+{ "u1_user_id": 4, "u2_user_id": 1 }
+{ "u1_user_id": 4, "u2_user_id": 2 }
+{ "u1_user_id": 4, "u2_user_id": 3 }

@@ -16,12 +16,14 @@ package org.apache.asterix.graphix.test;
 
 import org.apache.asterix.api.common.AsterixHyracksIntegrationUtil;
 import org.apache.hyracks.test.support.TestUtils;
+import org.apache.hyracks.util.file.FileUtil;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class GraphixIntegrationUtil extends AsterixHyracksIntegrationUtil {
-    private static final String DEFAULT_CONF_FILE = "asterixdb/asterix-opt/asterix-graphix/src/main/resources/cc.conf";
+    private static final String FILE_DEFAULT_CONF =
+            FileUtil.joinPath("asterixdb", "asterix-opt", "asterix-graphix", "src", "main", "resources", "cc.conf");
 
     public static void main(String[] args) {
         TestUtils.redirectLoggingToConsole();
@@ -29,7 +31,7 @@ public class GraphixIntegrationUtil extends AsterixHyracksIntegrationUtil {
         try {
             boolean cleanupOnStart = Boolean.getBoolean("cleanup.start");
             boolean cleanupOnShutdown = Boolean.getBoolean("cleanup.shutdown");
-            String confFile = System.getProperty("external.lib", DEFAULT_CONF_FILE);
+            String confFile = System.getProperty("conf.path", FILE_DEFAULT_CONF);
             graphixIntegrationUtil.run(cleanupOnStart, cleanupOnShutdown, confFile);
         } catch (Exception e) {
             e.printStackTrace();

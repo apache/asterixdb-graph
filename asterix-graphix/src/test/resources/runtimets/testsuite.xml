@@ -20,21 +20,129 @@
             ResultOffsetPath="results"
             QueryOffsetPath="queries"
             QueryFileExtension=".sqlpp">
-  <test-group name="error-handling">
+  <test-group name="create-drop-error">
     <test-case FilePath="graphix">
-      <compilation-unit name="error-handling">
-        <output-dir compare="Text">error-handling</output-dir>
-        <expected-error>Cannot drop dataset (or view) TestDataverse.GenericDataset being used by graph TestGraph</expected-error>
-        <expected-error>Cannot drop function TestDataverse.TestFunction() being used by graph TestGraph</expected-error>
-        <expected-error>Cannot drop dataset (or view) TestDataverse.TestView being used by graph TestGraph</expected-error>
-        <expected-error>Cannot drop synonym TestDataverse.DatasetSynonym being used by graph TestGraph</expected-error>
-        <expected-error>Cannot drop dataverse: dataset (or view) TestDataverse2.GenericDataset being used by graph TestGraph</expected-error>
+      <compilation-unit name="create-drop-error">
+        <output-dir compare="Text">create-drop-error</output-dir>
+        <expected-error>Cannot drop DATASET TestDataverse.GenericDataset being used by GRAPH TestDataverse.TestGraph</expected-error>
+        <expected-error>Cannot drop FUNCTION TestDataverse.TestFunction() being used by GRAPH TestDataverse.TestGraph</expected-error>
+        <expected-error>Cannot drop DATASET TestDataverse.TestView being used by GRAPH TestDataverse.TestGraph</expected-error>
+        <expected-error>Cannot drop SYNONYM TestDataverse.DatasetSynonym being used by GRAPH TestDataverse.TestGraph</expected-error>
+        <expected-error>Cannot drop dataverse: DATASET TestDataverse2.GenericDataset being used by GRAPH TestDataverse.TestGraph</expected-error>
         <expected-error>Bad definition for a graph element(.)*Cannot find dataset DatasetThatDoesNotExist in dataverse TestDataverse nor an alias with name DatasetThatDoesNotExist</expected-error>
         <expected-error>Bad definition for a graph element(.)*Cannot resolve ambiguous alias reference for identifier V</expected-error>
         <expected-error>Conflicting primary keys for vertices with label Vertex1</expected-error>
-        <expected-error>Destination vertex Vertex3 not found in the edge EDGE_1.</expected-error>
-        <expected-error>Graph TestGraph already exists.</expected-error>
-        <expected-error>Graph GraphThatDoesntExist2 does not exist.</expected-error>
+        <expected-error>Destination vertex Vertex3 not found in the edge EDGE_1</expected-error>
+        <expected-error>Graph TestGraph already exists</expected-error>
+        <expected-error>Graph GraphThatDoesntExist2 does not exist</expected-error>
+        <expected-error>Cannot drop GRAPH TestDataverse.TestGraph being used by VIEW TestDataverse.TestView</expected-error>
+        <expected-error>Cannot drop GRAPH TestDataverse.TestGraph being used by FUNCTION TestDataverse.TestFunction</expected-error>
+        <expected-error>Cannot drop GRAPH TestDataverse.TestGraph being used by GRAPH TestDataverse.TestGraph2</expected-error>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="dangling-vertices">
+    <test-case FilePath="graphix">
+      <compilation-unit name="dangling-vertices">
+        <output-dir compare="Text">dangling-vertices</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="fixed-sub-path">
+    <test-case FilePath="graphix">
+      <compilation-unit name="fixed-sub-path">
+        <output-dir compare="Text">fixed-sub-path</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="graph-isomorphism">
+    <test-case FilePath="graphix">
+      <compilation-unit name="graph-isomorphism">
+        <output-dir compare="Text">graph-isomorphism</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="graphix-functions">
+    <test-case FilePath="graphix">
+      <compilation-unit name="graphix-functions">
+        <output-dir compare="Text">graphix-functions</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="inference-resolution">
+    <test-case FilePath="graphix">
+      <compilation-unit name="inference-resolution">
+        <output-dir compare="Text">inference-resolution</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="left-match">
+    <test-case FilePath="graphix">
+      <compilation-unit name="left-match">
+        <output-dir compare="Text">left-match</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="minimal-resolution">
+    <test-case FilePath="graphix" check-warnings="true">
+      <compilation-unit name="minimal-resolution">
+        <output-dir compare="Text">minimal-resolution</output-dir>
+        <expected-warn>Vertex label could not be resolved. Assuming that vertex $n has all schema labels.</expected-warn>
+        <expected-warn>Vertex label could not be resolved. Assuming that vertex $m has all schema labels.</expected-warn>
+        <expected-warn>Vertex label could not be resolved. Assuming that vertex $n has all schema labels.</expected-warn>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="on-query-error">
+    <test-case FilePath="graphix">
+      <compilation-unit name="on-query-error">
+        <output-dir compare="Text">on-query-error</output-dir>
+        <expected-error>Vertex $v defined with a label more than once. Labels can only be bound to vertices once.</expected-error>
+        <expected-error>Edge $e defined more than once. Edges can only connect two vertices.</expected-error>
+        <expected-error>Vertex label NonExistentLabel does not exist in the given graph schema.</expected-error>
+        <expected-error>Edge label NON_EXISTENT_EDGE does not exist in the given graph schema.</expected-error>
+        <expected-error>Query edge given, but no edge is defined in the schema.</expected-error>
+        <expected-error>Sub-path edges cannot have a hop length less than 1.</expected-error>
+        <expected-error>Sub-path edges cannot have a maximum hop length (2) less than the minimum hop length (4).</expected-error>
+        <expected-error>Conflicting primary keys for vertices with label Vertex1</expected-error>
+        <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
+        <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
+        <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="path-variable">
+    <test-case FilePath="graphix">
+      <compilation-unit name="path-variable">
+        <output-dir compare="Text">path-variable</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="scope-checking">
+    <test-case FilePath="graphix">
+      <compilation-unit name="scope-checking">
+        <output-dir compare="Text">scope-checking</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="simple-1-edge">
+    <test-case FilePath="graphix">
+      <compilation-unit name="simple-1-edge">
+        <output-dir compare="Text">simple-1-edge</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="simple-n-edge">
+    <test-case FilePath="graphix">
+      <compilation-unit name="simple-n-edge">
+        <output-dir compare="Text">simple-n-edge</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="variable-sub-path">
+    <test-case FilePath="graphix">
+      <compilation-unit name="variable-sub-path">
+        <output-dir compare="Text">variable-sub-path</output-dir>
       </compilation-unit>
     </test-case>
   </test-group>

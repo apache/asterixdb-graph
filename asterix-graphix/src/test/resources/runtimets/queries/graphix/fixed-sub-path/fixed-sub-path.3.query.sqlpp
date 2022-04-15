@@ -1,0 +1,37 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// One directed edge definition of exactly two hops.
+FROM GRAPH  VERTEX (:User)
+                   PRIMARY KEY (user_id)
+                   AS Yelp.Users,
+            EDGE   (:User)-[:FRIENDS_WITH]->(:User)
+                   SOURCE KEY (user_id)
+                   DESTINATION KEY (friend)
+                   AS ( FROM    Yelp.Friends F
+                        SELECT  F.user_id AS user_id,
+                                F.friend AS friend )
+MATCH       (u2:User)<-[fw:FRIENDS_WITH{2,2}]-(u1:User)
+UNNEST      fw AS fwEdgeRecord
+LET         fw_left_vertex = VERTEX_KEY(fwEdgeRecord.LeftVertex)
+SELECT      u1.user_id AS u1_user_id,
+            fw_left_vertex,
+            u2.user_id AS u2_user_id,
+            HOP_COUNT(fw) AS fw_hops
+ORDER BY    u1, fw_left_vertex, u2;

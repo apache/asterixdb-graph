@@ -1,0 +1,8 @@
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 1, "fw1_left_vertex": { "user_id": 2 }, "u2_user_id": 3, "fw2_left_vertex": { "user_id": 4 }, "u3_user_id": 5 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 1, "fw1_left_vertex": { "user_id": 2 }, "u2_user_id": 3, "fw2_left_vertex": { "user_id": 5 }, "u3_user_id": 5 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 1, "fw1_left_vertex": { "user_id": 3 }, "u2_user_id": 3, "fw2_left_vertex": { "user_id": 4 }, "u3_user_id": 5 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 1, "fw1_left_vertex": { "user_id": 3 }, "u2_user_id": 3, "fw2_left_vertex": { "user_id": 5 }, "u3_user_id": 5 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 2, "fw1_left_vertex": { "user_id": 3 }, "u2_user_id": 4, "fw2_left_vertex": { "user_id": 5 }, "u3_user_id": 6 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 2, "fw1_left_vertex": { "user_id": 3 }, "u2_user_id": 4, "fw2_left_vertex": { "user_id": 6 }, "u3_user_id": 6 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 2, "fw1_left_vertex": { "user_id": 4 }, "u2_user_id": 4, "fw2_left_vertex": { "user_id": 5 }, "u3_user_id": 6 }
+{ "fw1_hops": 2, "fw2_hops": 2, "u1_user_id": 2, "fw1_left_vertex": { "user_id": 4 }, "u2_user_id": 4, "fw2_left_vertex": { "user_id": 6 }, "u3_user_id": 6 }

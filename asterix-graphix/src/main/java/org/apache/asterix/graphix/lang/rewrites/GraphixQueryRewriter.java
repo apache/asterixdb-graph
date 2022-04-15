@@ -18,66 +18,120 @@
  */
 package org.apache.asterix.graphix.lang.rewrites;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
+import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.graphix.algebra.compiler.provider.GraphixCompilationProvider;
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
-import org.apache.asterix.graphix.lang.expression.GraphElementExpr;
-import org.apache.asterix.graphix.lang.parser.GraphElementBodyParser;
+import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
+import org.apache.asterix.graphix.lang.clause.FromGraphClause;
+import org.apache.asterix.graphix.lang.expression.GraphElementBodyExpr;
 import org.apache.asterix.graphix.lang.parser.GraphixParserFactory;
+import org.apache.asterix.graphix.lang.rewrites.common.ElementLookupTable;
+import org.apache.asterix.graphix.lang.rewrites.print.SqlppASTPrintQueryVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.ElementAnalysisVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.ElementLookupTableVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.ElementResolutionVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.GenerateVariableVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.GraphixFunctionCallVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.GraphixLoweringVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.PostRewriteCheckVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.PreRewriteCheckVisitor;
+import org.apache.asterix.graphix.lang.rewrites.visitor.ScopingCheckVisitor;
 import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
-import org.apache.asterix.graphix.metadata.entities.Graph;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.IParserFactory;
 import org.apache.asterix.lang.common.base.IReturningStatement;
 import org.apache.asterix.lang.common.expression.AbstractCallExpression;
+import org.apache.asterix.lang.common.rewrites.LangRewritingContext;
 import org.apache.asterix.lang.common.statement.Query;
 import org.apache.asterix.lang.common.struct.VarIdentifier;
 import org.apache.asterix.lang.common.util.ExpressionUtils;
+import org.apache.asterix.lang.sqlpp.rewrites.SqlppFunctionBodyRewriter;
 import org.apache.asterix.lang.sqlpp.rewrites.SqlppQueryRewriter;
 import org.apache.asterix.lang.sqlpp.rewrites.visitor.SqlppGatherFunctionCallsVisitor;
+import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.metadata.entities.Dataverse;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 import org.apache.hyracks.api.exceptions.SourceLocation;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+/**
+ * Rewriter for Graphix queries, which will lower all graph AST nodes into SQL++ AST nodes. We perform the following:
+ * 1. Perform an error-checking on the fresh AST (immediately after parsing).
+ * 2. Populate the unknowns in our AST (e.g. vertex / edge variables, projections, GROUP-BY keys).
+ * 3. Perform a variable-scoping pass to identify illegal variables (either duplicate or out-of-scope).
+ * 4. For the remainder of our Graphix function calls, rewrite each call into a subtree w/o Graphix functions.
+ * 5. Perform resolution of unlabeled vertices / edges, as well as edge directions.
+ * 6. Using the labels of the vertices / edges in our AST, fetch the relevant graph elements from our metadata.
+ * 7. Perform an analysis pass to find a) all vertices that are not attached to an edge (i.e. dangling vertices), b)
+ * a list of edges, ordered by their dependencies on other edges, and c) a list of optional vertices (from LEFT-MATCH
+ * clauses).
+ * 8. Perform Graphix AST node lowering to SQL++ AST nodes.
+ */
 public class GraphixQueryRewriter extends SqlppQueryRewriter {
+    private static final Logger LOGGER = LogManager.getLogger(GraphixQueryRewriter.class);
+
     private final GraphixParserFactory parserFactory;
     private final SqlppQueryRewriter bodyRewriter;
 
     public GraphixQueryRewriter(IParserFactory parserFactory) {
         super(parserFactory);
-
-        // We can safely downcast to our specific parser factory here.
         this.parserFactory = (GraphixParserFactory) parserFactory;
-        this.bodyRewriter = new SqlppQueryRewriter(parserFactory);
+        this.bodyRewriter = getFunctionAndViewBodyRewriter();
     }
 
-    public void rewrite(GraphixRewritingContext rewriteContext, IReturningStatement topStatement,
+    @Override
+    public void rewrite(LangRewritingContext langRewritingContext, IReturningStatement topStatement,
             boolean allowNonStoredUdfCalls, boolean inlineUdfsAndViews, Collection<VarIdentifier> externalVars)
             throws CompilationException {
-        // Get the graph elements in the top statement.
-        Map<GraphElementIdentifier, GraphElementDecl> graphElements =
-                loadNormalizedGraphElements(rewriteContext, topStatement);
+        LOGGER.debug("Starting Graphix AST rewrites.");
 
-        // Perform the remainder of our rewrites in our parent.
-        super.rewrite(rewriteContext.getLangRewritingContext(), topStatement, allowNonStoredUdfCalls,
-                inlineUdfsAndViews, externalVars);
+        // Perform an initial error-checking pass to validate our user query.
+        LOGGER.trace("Performing pre-rewrite check (user query validation).");
+        PreRewriteCheckVisitor preRewriteCheckVisitor = new PreRewriteCheckVisitor(langRewritingContext);
+        topStatement.getBody().accept(preRewriteCheckVisitor, null);
+
+        // Perform the Graphix rewrites.
+        rewriteGraphixASTNodes(langRewritingContext, topStatement);
+
+        // Sanity check: ensure that no graph AST nodes exist after this point.
+        LOGGER.trace("Performing post-rewrite check (making sure no graph AST nodes exist).");
+        PostRewriteCheckVisitor postRewriteCheckVisitor = new PostRewriteCheckVisitor();
+        topStatement.getBody().accept(postRewriteCheckVisitor, null);
+
+        // Perform the remainder of the SQL++ rewrites.
+        LOGGER.debug("Ending Graphix AST rewrites. Now starting SQL++ AST rewrites.");
+        super.rewrite(langRewritingContext, topStatement, allowNonStoredUdfCalls, inlineUdfsAndViews, externalVars);
+        LOGGER.debug("Ending SQL++ AST rewrites.");
+
+        // If desired, log the SQL++ query equivalent (i.e. turn the AST back into a query and log this).
+        MetadataProvider metadataProvider = langRewritingContext.getMetadataProvider();
+        String printRewriteMetadataKeyName = GraphixCompilationProvider.PRINT_REWRITE_METADATA_CONFIG;
+        String printRewriteOption = (String) metadataProvider.getConfig().get(printRewriteMetadataKeyName);
+        if ((printRewriteOption != null && printRewriteOption.equalsIgnoreCase("true")) || LOGGER.isTraceEnabled()) {
+            StringWriter stringWriter = new StringWriter();
+            PrintWriter printWriter = new PrintWriter(stringWriter);
+            new SqlppASTPrintQueryVisitor(printWriter).visit((Query) topStatement, null);
+            LOGGER.log(LOGGER.getLevel(), "Rewritten Graphix query: " + stringWriter);
+        }
     }
 
-    public Map<GraphElementIdentifier, GraphElementDecl> loadNormalizedGraphElements(
-            GraphixRewritingContext rewriteContext, IReturningStatement topExpr) throws CompilationException {
-        Map<GraphElementIdentifier, GraphElementDecl> graphElements = new HashMap<>();
-
+    public void loadNormalizedGraphElement(GraphixRewritingContext graphixRewritingContext, IReturningStatement topExpr,
+            GraphElementDecl graphElementDecl) throws CompilationException {
         // Gather all function calls.
         Deque<AbstractCallExpression> workQueue = new ArrayDeque<>();
         SqlppGatherFunctionCallsVisitor callVisitor = new SqlppGatherFunctionCallsVisitor(workQueue);
@@ -87,71 +141,114 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
 
         AbstractCallExpression fnCall;
         while ((fnCall = workQueue.poll()) != null) {
-            // Load only the graph element declarations (we will load the rest of the elements in the parent).
-            if (!fnCall.getKind().equals(Expression.Kind.CALL_EXPRESSION)
-                    || !fnCall.getFunctionSignature().getName().equals(GraphElementExpr.GRAPH_ELEMENT_FUNCTION_NAME)) {
+            // We only care about graph element declarations.
+            FunctionSignature functionSignature = fnCall.getFunctionSignature();
+            if (!functionSignature.getName().equals(GraphixFunctionIdentifiers.GRAPH_ELEMENT_BODY.getName())
+                    || !Objects.equals(functionSignature.getDataverseName(), GraphixFunctionIdentifiers.GRAPHIX_DV)) {
                 continue;
             }
-            GraphElementExpr graphElementExpr = (GraphElementExpr) fnCall;
-            GraphElementIdentifier identifier = graphElementExpr.getIdentifier();
-            if (!graphElements.containsKey(identifier)) {
 
-                // First, check if we have already loaded this graph element.
-                GraphElementDecl elementDecl = rewriteContext.getDeclaredGraphElements().get(identifier);
-
-                // If we cannot find the graph element in our context, search our metadata.
-                if (elementDecl == null) {
-                    GraphIdentifier graphIdentifier = identifier.getGraphIdentifier();
-                    Graph graph;
-                    try {
-                        graph = GraphixMetadataExtension.getGraph(
-                                rewriteContext.getMetadataProvider().getMetadataTxnContext(),
-                                graphIdentifier.getDataverseName(), graphIdentifier.getGraphName());
-
-                    } catch (AlgebricksException e) {
-                        throw new CompilationException(ErrorCode.COMPILATION_ERROR,
-                                graphElementExpr.getSourceLocation(),
-                                "Graph " + graphIdentifier.getGraphName() + " does not exist.");
-                    }
-
-                    // Parse our graph element.
-                    if (graph == null) {
-                        throw new CompilationException(ErrorCode.COMPILATION_ERROR,
-                                graphElementExpr.getSourceLocation(),
-                                "Graph " + graphIdentifier.getGraphName() + " does not exist.");
-                    }
-                    Graph.Element element = graph.getGraphSchema().getElement(identifier);
-                    elementDecl = GraphElementBodyParser.parse(element, parserFactory,
-                            rewriteContext.getLangRewritingContext().getWarningCollector());
-                }
-
-                // Get our normalized element bodies.
-                List<Expression> normalizedBodies = elementDecl.getNormalizedBodies();
-                if (normalizedBodies.size() != elementDecl.getBodies().size()) {
-                    GraphIdentifier graphIdentifier = elementDecl.getGraphIdentifier();
-                    for (Expression body : elementDecl.getBodies()) {
-                        Expression normalizedBody =
-                                rewriteGraphElementBody(rewriteContext, graphIdentifier.getDataverseName(), body,
-                                        Collections.emptyList(), elementDecl.getSourceLocation());
-                        normalizedBodies.add(normalizedBody);
-                    }
-                }
-
-                // Store the element declaration in our map, and iterate over this body.
-                graphElements.put(identifier, elementDecl);
-                for (Expression e : elementDecl.getNormalizedBodies()) {
-                    e.accept(callVisitor, null);
+            // Get our normalized element bodies, by calling our rewriter.
+            List<Expression> normalizedBodies = graphElementDecl.getNormalizedBodies();
+            if (normalizedBodies.size() != graphElementDecl.getBodies().size()) {
+                GraphIdentifier graphIdentifier = graphElementDecl.getGraphIdentifier();
+                for (Expression body : graphElementDecl.getBodies()) {
+                    Expression normalizedBody =
+                            rewriteGraphElementBody(graphixRewritingContext, graphIdentifier.getDataverseName(), body,
+                                    Collections.emptyList(), graphElementDecl.getSourceLocation());
+                    normalizedBodies.add(normalizedBody);
                 }
             }
-        }
 
-        return graphElements;
+            // We should only have one element. We can safely break here.
+            break;
+        }
     }
 
-    private Expression rewriteGraphElementBody(GraphixRewritingContext rewriteContext, DataverseName elementDataverse,
-            Expression bodyExpr, List<VarIdentifier> externalVars, SourceLocation sourceLoc)
+    public void rewriteGraphixASTNodes(LangRewritingContext langRewritingContext, IReturningStatement topStatement)
             throws CompilationException {
-        Dataverse defaultDataverse = rewriteContext.getMetadataProvider().getDefaultDataverse();
+        // Generate names for unnamed graph elements, projections in our SELECT CLAUSE, and keys in our GROUP BY.
+        LOGGER.trace("Generating names for unnamed elements (both graph and non-graph) in our AST.");
+        GraphixRewritingContext graphixRewritingContext = new GraphixRewritingContext(langRewritingContext);
+        GenerateVariableVisitor generateVariableVisitor = new GenerateVariableVisitor(graphixRewritingContext);
+        topStatement.getBody().accept(generateVariableVisitor, null);
+
+        // Verify that variables are properly within scope.
+        LOGGER.trace("Verifying that variables are unique and are properly scoped.");
+        ScopingCheckVisitor scopingCheckVisitor = new ScopingCheckVisitor(langRewritingContext);
+        topStatement.getBody().accept(scopingCheckVisitor, null);
+
+        // Handle all Graphix-specific function calls to SQL++ rewrites.
+        LOGGER.trace("Rewriting all Graphix function calls to a SQL++ subtree or a function-less Graphix subtree.");
+        GraphixFunctionCallVisitor graphixFunctionCallVisitor = new GraphixFunctionCallVisitor(graphixRewritingContext);
+        topStatement.getBody().accept(graphixFunctionCallVisitor, null);
+
+        // Attempt to resolve our vertex labels, edge labels, and edge directions.
+        LOGGER.trace("Performing label and edge direction resolution.");
+        ElementResolutionVisitor elementResolutionVisitor = new ElementResolutionVisitor(
+                graphixRewritingContext.getMetadataProvider(), graphixRewritingContext.getWarningCollector());
+        topStatement.getBody().accept(elementResolutionVisitor, null);
+
+        // Fetch all relevant graph element declarations, using the element labels.
+        LOGGER.trace("Fetching relevant edge and vertex bodies from our graph schema.");
+        ElementLookupTable<GraphElementIdentifier> elementLookupTable = new ElementLookupTable<>();
+        ElementLookupTableVisitor elementLookupTableVisitor =
+                new ElementLookupTableVisitor(elementLookupTable, graphixRewritingContext.getMetadataProvider(),
+                        parserFactory, graphixRewritingContext.getWarningCollector());
+        topStatement.getBody().accept(elementLookupTableVisitor, null);
+        for (GraphElementDecl graphElementDecl : elementLookupTable) {
+            Query wrappedQuery = ExpressionUtils.createWrappedQuery(
+                    new GraphElementBodyExpr(graphElementDecl.getIdentifier()), graphElementDecl.getSourceLocation());
+            loadNormalizedGraphElement(graphixRewritingContext, wrappedQuery, graphElementDecl);
+        }
+
+        // Perform an analysis pass to get our edge dependencies, dangling vertices, and FROM-GRAPH-CLAUSE variables.
+        LOGGER.trace("Collecting edge dependencies, dangling vertices, and FROM-GRAPH-CLAUSE specific variables.");
+        ElementAnalysisVisitor elementAnalysisVisitor = new ElementAnalysisVisitor();
+        topStatement.getBody().accept(elementAnalysisVisitor, null);
+        Map<FromGraphClause, ElementAnalysisVisitor.FromGraphClauseContext> fromGraphClauseContextMap =
+                elementAnalysisVisitor.getFromGraphClauseContextMap();
+
+        // Transform all graph AST nodes (i.e. perform the representation lowering).
+        LOGGER.trace("Lowering the Graphix AST representation to a pure SQL++ representation.");
+        GraphixLoweringVisitor graphixLoweringVisitor =
+                new GraphixLoweringVisitor(fromGraphClauseContextMap, elementLookupTable, graphixRewritingContext);
+        topStatement.getBody().accept(graphixLoweringVisitor, null);
+    }
+
+    @Override
+    protected SqlppFunctionBodyRewriter getFunctionAndViewBodyRewriter() {
+        return new SqlppFunctionBodyRewriter(parserFactory) {
+            @Override
+            public void rewrite(LangRewritingContext langRewritingContext, IReturningStatement topStatement,
+                    boolean allowNonStoredUdfCalls, boolean inlineUdfsAndViews, Collection<VarIdentifier> externalVars)
+                    throws CompilationException {
+                // Perform an initial error-checking pass to validate our body.
+                LOGGER.trace("Performing pre-rewrite check (user query validation).");
+                PreRewriteCheckVisitor preRewriteCheckVisitor = new PreRewriteCheckVisitor(langRewritingContext);
+                topStatement.getBody().accept(preRewriteCheckVisitor, null);
+
+                // Perform the Graphix rewrites.
+                rewriteGraphixASTNodes(langRewritingContext, topStatement);
+
+                // Sanity check: ensure that no graph AST nodes exist after this point.
+                LOGGER.trace("Performing post-rewrite check (making sure no graph AST nodes exist).");
+                PostRewriteCheckVisitor postRewriteCheckVisitor = new PostRewriteCheckVisitor();
+                topStatement.getBody().accept(postRewriteCheckVisitor, null);
+
+                // Perform the remainder of the SQL++ rewrites.
+                LOGGER.debug("Ending Graphix AST rewrites. Now starting SQL++ AST rewrites.");
+                super.rewrite(langRewritingContext, topStatement, allowNonStoredUdfCalls, inlineUdfsAndViews,
+                        externalVars);
+                LOGGER.debug("Ending SQL++ AST rewrites.");
+            }
+        };
+    }
+
+    private Expression rewriteGraphElementBody(GraphixRewritingContext graphixRewritingContext,
+            DataverseName elementDataverse, Expression bodyExpr, List<VarIdentifier> externalVars,
+            SourceLocation sourceLoc) throws CompilationException {
+        Dataverse defaultDataverse = graphixRewritingContext.getMetadataProvider().getDefaultDataverse();
         Dataverse targetDataverse;
 
         // We might need to change our dataverse, if the element definition requires a different one.
@@ -160,18 +257,19 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
 
         } else {
             try {
-                targetDataverse = rewriteContext.getMetadataProvider().findDataverse(elementDataverse);
+                targetDataverse = graphixRewritingContext.getMetadataProvider().findDataverse(elementDataverse);
 
             } catch (AlgebricksException e) {
                 throw new CompilationException(ErrorCode.UNKNOWN_DATAVERSE, e, sourceLoc, elementDataverse);
             }
         }
-        rewriteContext.getMetadataProvider().setDefaultDataverse(targetDataverse);
+        graphixRewritingContext.getMetadataProvider().setDefaultDataverse(targetDataverse);
 
         // Get the body of the rewritten query.
         try {
             Query wrappedQuery = ExpressionUtils.createWrappedQuery(bodyExpr, sourceLoc);
-            bodyRewriter.rewrite(rewriteContext.getLangRewritingContext(), wrappedQuery, false, false, externalVars);
+            LangRewritingContext langRewritingContext = graphixRewritingContext.getLangRewritingContext();
+            bodyRewriter.rewrite(langRewritingContext, wrappedQuery, false, false, externalVars);
             return wrappedQuery.getBody();
 
         } catch (CompilationException e) {
@@ -180,7 +278,7 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
 
         } finally {
             // Switch back to the working dataverse.
-            rewriteContext.getMetadataProvider().setDefaultDataverse(defaultDataverse);
+            graphixRewritingContext.getMetadataProvider().setDefaultDataverse(defaultDataverse);
         }
     }
 }

@@ -236,7 +236,7 @@
     <dependency>
       <groupId>org.apache.asterix</groupId>
       <artifactId>asterix-test-framework</artifactId>
-      <version>0.9.7-SNAPSHOT</version>
+      <version>${asterix.version}</version>
       <scope>test</scope>
     </dependency>
 

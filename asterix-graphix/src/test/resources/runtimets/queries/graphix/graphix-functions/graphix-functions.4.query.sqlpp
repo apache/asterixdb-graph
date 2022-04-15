@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Test each simple edge function (direction, label, keys, detail, properties).
+FROM GRAPH  VERTEX (:User)
+                   PRIMARY KEY (user_id)
+                   AS Yelp.Users,
+            VERTEX (:Review)
+                   PRIMARY KEY (review_id)
+                   AS Yelp.Reviews,
+            EDGE   (:User)-[:FRIENDS_WITH]->(:User)
+                   SOURCE KEY (user_id)
+                   DESTINATION KEY (friend)
+                   AS ( FROM    Yelp.Friends F
+                        SELECT  F.user_id AS user_id,
+                                F.friend AS friend ),
+            EDGE   (:User)<-[:MADE_BY]-(:Review)
+                   SOURCE KEY (review_id)
+                   DESTINATION KEY (user_id)
+                   AS ( FROM    Yelp.Reviews R
+                        SELECT  R.review_id,
+                                R.user_id )
+MATCH       (n1)-[e]-(n2)
+SELECT      DIRECTION(e) AS direction,
+            SOURCE_KEY(e) AS sourceKeyValue,
+            DEST_KEY(e) AS destKeyValue,
+            SOURCE_VERTEX(e, n1, n2) AS sourceVertex,
+            DEST_VERTEX(e, n1, n2) AS destVertex,
+            EDGE_DETAIL(e) AS edgeDetail,
+            EDGE_PROPERTIES(e) AS edgeProperties,
+            LABEL(e) AS edgeLabel,
+            LABEL(n1) AS n1Label,
+            LABEL(n2) AS n2Label
+ORDER BY    n1, e, n2;

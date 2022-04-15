@@ -1,0 +1,65 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+SELECT    VALUE {
+    "graph": (
+        FROM      `Metadata`.`Graph` G,
+                  `Metadata`.`GraphDependency` GD,
+                  GD.Dependencies D
+        WHERE     G.DataverseName = GD.DataverseName AND
+                  G.GraphName = GD.EntityName AND
+                  GD.DataverseName = "Yelp" AND
+                  GD.Kind = "GRAPH"
+        SELECT    G.DataverseName, G.GraphName,
+                  D.DataverseName AS DependentDataverse,
+                  D.EntityName AS DependentName,
+                  D.Kind AS DependentKind
+        ORDER BY  G.DataverseName, G.GraphName, D
+    ),
+    "function": (
+        FROM      `Metadata`.`Function` F,
+                  `Metadata`.`GraphDependency` GD,
+                  GD.Dependencies D
+        WHERE     F.DataverseName = GD.DataverseName AND
+                  F.Name = GD.EntityName AND
+                  F.Arity = GD.EntityDetail AND
+                  GD.DataverseName = "Yelp" AND
+                  GD.Kind = "FUNCTION"
+        SELECT    F.DataverseName, F.Name, F.Arity,
+                  D.DataverseName AS DependentDataverse,
+                  D.EntityName AS DependentName,
+                  D.Kind AS DependentKind
+        ORDER BY  F.DataverseName, F.Name, D
+    ),
+    "view": (
+        FROM      `Metadata`.`Dataset` DD,
+                  `Metadata`.`GraphDependency` GD,
+                  GD.Dependencies D
+        WHERE     DD.DataverseName = GD.DataverseName AND
+                  DD.DatasetName = GD.EntityName AND
+                  DD.DatasetType = "VIEW" AND
+                  GD.DataverseName = "Yelp" AND
+                  GD.Kind = "VIEW"
+        SELECT    DD.DataverseName, DD.DatasetName,
+                  D.DataverseName AS DependentDataverse,
+                  D.EntityName AS DependentName,
+                  D.Kind AS DependentKind
+        ORDER BY  DD.DataverseName, DD.DatasetName, D
+    )
+};

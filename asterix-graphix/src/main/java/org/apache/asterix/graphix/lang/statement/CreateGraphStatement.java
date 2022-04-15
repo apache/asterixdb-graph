@@ -19,6 +19,7 @@
 package org.apache.asterix.graphix.lang.statement;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.asterix.algebra.extension.ExtensionStatement;
 import org.apache.asterix.app.translator.QueryTranslator;
@@ -34,6 +35,13 @@ import org.apache.asterix.translator.IStatementExecutor;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
+/**
+ * Statement for storing a {@link GraphConstructor} instance in our metadata.
+ * - A CREATE GRAPH statement MUST always include a graph name.
+ * - We can specify "CREATE OR REPLACE" to perform an upsert of our graph.
+ * - We can specify "CREATE ... IF NOT EXISTS" to insert the graph if it doesn't exist, and not raise an error if the
+ * graph already exists.
+ */
 public class CreateGraphStatement extends ExtensionStatement {
     private final GraphConstructor graphConstructor;
     private final DataverseName dataverseName;
@@ -44,7 +52,7 @@ public class CreateGraphStatement extends ExtensionStatement {
     public CreateGraphStatement(DataverseName dataverseName, String graphName, boolean replaceIfExists,
             boolean ifNotExists, GraphConstructor graphConstructor) {
         this.dataverseName = dataverseName;
-        this.graphName = graphName;
+        this.graphName = Objects.requireNonNull(graphName);
         this.replaceIfExists = replaceIfExists;
         this.ifNotExists = ifNotExists;
         this.graphConstructor = graphConstructor;
@@ -66,11 +74,11 @@ public class CreateGraphStatement extends ExtensionStatement {
         return ifNotExists;
     }
 
-    public List<GraphConstructor.VertexElement> getVertexElements() {
+    public List<GraphConstructor.VertexConstructor> getVertexElements() {
         return graphConstructor.getVertexElements();
     }
 
-    public List<GraphConstructor.EdgeElement> getEdgeElements() {
+    public List<GraphConstructor.EdgeConstructor> getEdgeElements() {
         return graphConstructor.getEdgeElements();
     }
 
@@ -94,7 +102,7 @@ public class CreateGraphStatement extends ExtensionStatement {
             IRequestParameters requestParameters, MetadataProvider metadataProvider, int resultSetId) throws Exception {
         metadataProvider.validateDatabaseObjectName(dataverseName, graphName, this.getSourceLocation());
         DataverseName activeDataverseName = statementExecutor.getActiveDataverseName(this.dataverseName);
-        GraphStatementHandlingUtil.acquireGraphWriteLocks(metadataProvider, activeDataverseName, graphName);
+        GraphStatementHandlingUtil.acquireGraphExtensionWriteLocks(metadataProvider, activeDataverseName, graphName);
         try {
             GraphStatementHandlingUtil.handleCreateGraph(this, metadataProvider, statementExecutor,
                     activeDataverseName);

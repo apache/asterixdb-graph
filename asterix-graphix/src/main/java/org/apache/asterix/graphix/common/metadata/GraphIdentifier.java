@@ -23,14 +23,19 @@ import java.util.Objects;
 
 import org.apache.asterix.common.metadata.DataverseName;
 
+/**
+ * A unique identifier for a graph. A graph is uniquely identified by:
+ * 1. The dataverse associated with the graph. A graph identifier must always belong to some dataverse.
+ * 2. The name of the graph. Anonymous graphs should have a name generated from its respective GRAPH-CONSTRUCTOR.
+ */
 public class GraphIdentifier implements Serializable {
     private static final long serialVersionUID = 1L;
     private final DataverseName dataverseName;
     private final String graphName;
 
     public GraphIdentifier(DataverseName dataverseName, String graphName) {
-        this.dataverseName = dataverseName;
-        this.graphName = graphName;
+        this.dataverseName = Objects.requireNonNull(dataverseName);
+        this.graphName = Objects.requireNonNull(graphName);
     }
 
     public DataverseName getDataverseName() {
@@ -53,7 +58,7 @@ public class GraphIdentifier implements Serializable {
         }
         if (o instanceof GraphIdentifier) {
             GraphIdentifier that = (GraphIdentifier) o;
-            return dataverseName.equals(that.dataverseName) && graphName.equals(that.graphName);
+            return dataverseName.equals(that.dataverseName) && Objects.equals(graphName, that.graphName);
         }
         return false;
     }

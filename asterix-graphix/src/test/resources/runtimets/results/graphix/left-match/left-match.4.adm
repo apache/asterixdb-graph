@@ -1,0 +1,2 @@
+{ "u1_user_id": 1, "fw_user_id": 1, "fw_friend": 2, "u2_user_id": 2 }
+{ "u1_user_id": 2, "fw_user_id": 2, "fw_friend": 3, "u2_user_id": 3, "mb_user_id": 2, "mb_review_id": "A", "r_review_id": "A" }

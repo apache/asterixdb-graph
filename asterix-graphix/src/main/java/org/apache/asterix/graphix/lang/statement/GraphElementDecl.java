@@ -35,6 +35,14 @@ import org.apache.asterix.translator.IRequestParameters;
 import org.apache.asterix.translator.IStatementExecutor;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
 
+/**
+ * A declaration for a single graph element (vertex or edge), which cannot be explicitly specified by the user.
+ * - This is analogous to {@link org.apache.asterix.lang.common.statement.ViewDecl} for views and
+ * {@link org.apache.asterix.lang.common.statement.FunctionDecl} for functions, in that we use this class to store the
+ * directly parsed AST and a normalized AST for the bodies themselves.
+ * - Unlike views and functions, a single graph element may have more than one body. Graph element declarations start
+ * off with one body, and it is up to the caller to manage multiple bodies.
+ */
 public final class GraphElementDecl extends ExtensionStatement {
     private final GraphElementIdentifier identifier;
     private final List<Expression> bodies = new ArrayList<>();

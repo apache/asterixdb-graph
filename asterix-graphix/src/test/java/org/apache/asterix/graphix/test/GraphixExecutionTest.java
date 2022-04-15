@@ -26,7 +26,7 @@ import org.apache.asterix.test.common.TestExecutor;
 import org.apache.asterix.test.runtime.ExecutionTestUtil;
 import org.apache.asterix.testframework.context.TestCaseContext;
 import org.apache.asterix.testframework.xml.TestGroup;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.hyracks.util.file.FileUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -36,10 +36,9 @@ import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class GraphixExecutionTest {
-    protected static final String PATH_ACTUAL = "target/rttest" + File.separator;
-    protected static final String PATH_BASE =
-            StringUtils.join(new String[] { "src", "test", "resources", "runtimets" }, File.separator);
-    protected static final String TEST_CONFIG_FILE_NAME = "src/main/resources/cc.conf";
+    protected static final String PATH_ACTUAL = FileUtil.joinPath("target", "rttest");
+    protected static final String PATH_BASE = FileUtil.joinPath("src", "test", "resources", "runtimets");
+    protected static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "main", "resources", "cc.conf");
     private static final String TEST_SUITE_FILE = "testsuite.xml";
     private static final String ONLY_SUITE_FILE = "only.xml";
 
@@ -57,7 +56,7 @@ public class GraphixExecutionTest {
     public static void setUp() throws Exception {
         //noinspection ResultOfMethodCallIgnored
         new File(PATH_ACTUAL).mkdirs();
-        ExecutionTestUtil.setUp(true, TEST_CONFIG_FILE_NAME, integrationUtil, false, null);
+        ExecutionTestUtil.setUp(true, FILE_TEST_CONFIG, integrationUtil, false, null);
     }
 
     @AfterClass
@@ -66,7 +65,7 @@ public class GraphixExecutionTest {
         integrationUtil.removeTestStorageFiles();
     }
 
-    @Parameters(name = "ExecutionTest {index}: {0}")
+    @Parameters(name = "GraphixExecutionTest {index}: {0}")
     public static Collection<Object[]> tests() throws Exception {
         Collection<Object[]> test_cases = buildTestsInXml(ONLY_SUITE_FILE);
         if (test_cases.size() == 0) {

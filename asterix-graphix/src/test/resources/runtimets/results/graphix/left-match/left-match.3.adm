@@ -1,0 +1,3 @@
+{ "u1_user_id": 1, "mb_user_id": 1, "mb_review_id": "A", "r_review_id": "A" }
+{ "u1_user_id": 1, "mb_user_id": 1, "mb_review_id": "C", "r_review_id": "C" }
+{ "u1_user_id": 2, "fw_user_id": 2, "fw_friend": 3, "u2_user_id": 3, "mb_user_id": 2, "mb_review_id": "B", "r_review_id": "B" }

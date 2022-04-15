@@ -18,6 +18,8 @@
  */
 package org.apache.asterix.graphix.lang.statement;
 
+import java.util.Objects;
+
 import org.apache.asterix.algebra.extension.ExtensionStatement;
 import org.apache.asterix.app.translator.QueryTranslator;
 import org.apache.asterix.common.exceptions.CompilationException;
@@ -31,6 +33,13 @@ import org.apache.asterix.translator.IStatementExecutor;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
 import org.apache.hyracks.api.exceptions.HyracksDataException;
 
+/**
+ * Statement for removing a {@link org.apache.asterix.graphix.lang.expression.GraphConstructor} instance from our
+ * metadata.
+ * - A DROP GRAPH statement MUST always include a graph name.
+ * - We can specify "DROP ... IF EXISTS" to drop the graph if it exists, and not raise an error if the graph doesn't
+ * exist.
+ */
 public class GraphDropStatement extends ExtensionStatement {
     private final DataverseName dataverseName;
     private final String graphName;
@@ -38,7 +47,7 @@ public class GraphDropStatement extends ExtensionStatement {
 
     public GraphDropStatement(DataverseName dataverseName, String graphName, boolean ifExists) {
         this.dataverseName = dataverseName;
-        this.graphName = graphName;
+        this.graphName = Objects.requireNonNull(graphName);
         this.ifExists = ifExists;
     }
 
@@ -74,9 +83,8 @@ public class GraphDropStatement extends ExtensionStatement {
             IRequestParameters requestParameters, MetadataProvider metadataProvider, int resultSetId) throws Exception {
         metadataProvider.validateDatabaseObjectName(dataverseName, graphName, this.getSourceLocation());
         DataverseName activeDataverseName = statementExecutor.getActiveDataverseName(this.dataverseName);
-        GraphStatementHandlingUtil.acquireGraphWriteLocks(metadataProvider, activeDataverseName, graphName);
+        GraphStatementHandlingUtil.acquireGraphExtensionWriteLocks(metadataProvider, activeDataverseName, graphName);
         try {
-            // TODO (GLENN): Determine how to handle functions and views that depend on graphs.
             GraphStatementHandlingUtil.handleGraphDrop(this, metadataProvider, activeDataverseName);
 
         } catch (Exception e) {

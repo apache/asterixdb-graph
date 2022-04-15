@@ -19,7 +19,13 @@
 package org.apache.asterix.graphix.lang.rewrites.visitor;
 
 import org.apache.asterix.common.exceptions.CompilationException;
+import org.apache.asterix.graphix.lang.clause.FromGraphClause;
+import org.apache.asterix.graphix.lang.clause.GraphSelectBlock;
+import org.apache.asterix.graphix.lang.clause.MatchClause;
+import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
+import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
+import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
 import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
@@ -28,13 +34,25 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 public interface IGraphixLangVisitor<R, T> extends ILangVisitor<R, T> {
     R visit(GraphConstructor gc, T arg) throws CompilationException;
 
-    R visit(GraphConstructor.VertexElement ve, T arg) throws CompilationException;
+    R visit(GraphConstructor.VertexConstructor ve, T arg) throws CompilationException;
 
-    R visit(GraphConstructor.EdgeElement ee, T arg) throws CompilationException;
+    R visit(GraphConstructor.EdgeConstructor ee, T arg) throws CompilationException;
 
     R visit(CreateGraphStatement cgs, T arg) throws CompilationException;
 
     R visit(GraphElementDecl gel, T arg) throws CompilationException;
 
     R visit(GraphDropStatement gds, T arg) throws CompilationException;
+
+    R visit(GraphSelectBlock gsb, T arg) throws CompilationException;
+
+    R visit(FromGraphClause fgc, T arg) throws CompilationException;
+
+    R visit(MatchClause mc, T arg) throws CompilationException;
+
+    R visit(EdgePatternExpr epe, T arg) throws CompilationException;
+
+    R visit(PathPatternExpr ppe, T arg) throws CompilationException;
+
+    R visit(VertexPatternExpr vpe, T arg) throws CompilationException;
 }

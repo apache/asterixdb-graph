@@ -1,0 +1,6 @@
+{ "u_user_id": 1, "r1_review_id": "A", "r2_review_id": "B", "r3_review_id": "C", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "A", "mb2_review_id": "B", "mb3_review_id": "C" }
+{ "u_user_id": 1, "r1_review_id": "A", "r2_review_id": "C", "r3_review_id": "B", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "A", "mb2_review_id": "C", "mb3_review_id": "B" }
+{ "u_user_id": 1, "r1_review_id": "B", "r2_review_id": "A", "r3_review_id": "C", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "B", "mb2_review_id": "A", "mb3_review_id": "C" }
+{ "u_user_id": 1, "r1_review_id": "B", "r2_review_id": "C", "r3_review_id": "A", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "B", "mb2_review_id": "C", "mb3_review_id": "A" }
+{ "u_user_id": 1, "r1_review_id": "C", "r2_review_id": "A", "r3_review_id": "B", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "C", "mb2_review_id": "A", "mb3_review_id": "B" }
+{ "u_user_id": 1, "r1_review_id": "C", "r2_review_id": "B", "r3_review_id": "A", "mb1_user_id": 1, "mb2_user_id": 1, "mb3_user_id": 1, "mb1_review_id": "C", "mb2_review_id": "B", "mb3_review_id": "A" }

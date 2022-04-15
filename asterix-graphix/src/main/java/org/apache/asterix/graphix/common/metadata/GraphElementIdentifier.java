@@ -21,16 +21,24 @@ package org.apache.asterix.graphix.common.metadata;
 import java.io.Serializable;
 import java.util.Objects;
 
+import org.apache.asterix.graphix.lang.struct.ElementLabel;
+
+/**
+ * A unique identifier for a graph element (vertex or edge). A graph element is uniquely identified by:
+ * 1. The graph identifier associated with the graph element itself.
+ * 2. The kind of the element (vertex or edge).
+ * 3. The label associated with the element itself- a graph element has only one label in our user model.
+ */
 public class GraphElementIdentifier implements Serializable {
     private static final long serialVersionUID = 1L;
     private final GraphIdentifier graphIdentifier;
     private final Kind elementKind;
-    private final String labelName;
+    private final ElementLabel elementLabel;
 
-    public GraphElementIdentifier(GraphIdentifier graphIdentifier, Kind elementKind, String labelName) {
+    public GraphElementIdentifier(GraphIdentifier graphIdentifier, Kind elementKind, ElementLabel elementLabel) {
         this.graphIdentifier = graphIdentifier;
         this.elementKind = elementKind;
-        this.labelName = labelName;
+        this.elementLabel = elementLabel;
     }
 
     public GraphIdentifier getGraphIdentifier() {
@@ -41,13 +49,13 @@ public class GraphElementIdentifier implements Serializable {
         return elementKind;
     }
 
-    public String getLabelName() {
-        return labelName;
+    public ElementLabel getElementLabel() {
+        return elementLabel;
     }
 
     @Override
     public String toString() {
-        return graphIdentifier + "#" + labelName + " ( " + elementKind + " )";
+        return graphIdentifier + "#" + elementLabel + " ( " + elementKind + " )";
     }
 
     @Override
@@ -58,30 +66,18 @@ public class GraphElementIdentifier implements Serializable {
         if (o instanceof GraphElementIdentifier) {
             GraphElementIdentifier that = (GraphElementIdentifier) o;
             return graphIdentifier.equals(that.graphIdentifier) && elementKind.equals(that.elementKind)
-                    && labelName.equals(that.labelName);
+                    && elementLabel.equals(that.elementLabel);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(graphIdentifier, elementKind, labelName);
+        return Objects.hash(graphIdentifier, elementKind, elementLabel);
     }
 
     public enum Kind {
         VERTEX,
-        EDGE;
-
-        @Override
-        public String toString() {
-            switch (this) {
-                case EDGE:
-                    return "edge";
-                case VERTEX:
-                    return "vertex";
-                default:
-                    throw new IllegalStateException("Unknown graph element kind.");
-            }
-        }
+        EDGE
     }
 }

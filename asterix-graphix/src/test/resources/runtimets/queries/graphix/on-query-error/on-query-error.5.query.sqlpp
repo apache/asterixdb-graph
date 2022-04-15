@@ -1,0 +1,32 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Verify that the edge label used in a query exists in the graph schema.
+USE         TestDataverse;
+FROM GRAPH  VERTEX  (:Vertex1)
+                    PRIMARY KEY (_id)
+                    AS GenericDataset,
+            EDGE    (:Vertex1)-[:EDGE_1]->(:Vertex1)
+                    SOURCE KEY (_id)
+                    DESTINATION KEY (_to_id)
+                    AS ( FROM    GenericDataset GD
+                         SELECT  GD._id, GD._to_id )
+MATCH       (v1:Vertex1)-[e1:NON_EXISTENT_EDGE]-(v3),
+            (v2)-[e2]-(v4)
+SELECT      v1, v2, v3, v4, e1, e2;

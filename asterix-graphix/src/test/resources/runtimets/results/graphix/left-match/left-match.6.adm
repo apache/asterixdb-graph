@@ -1,0 +1,5 @@
+{ "u1_user_id": 1, "fw1_user_id": 1, "fw1_friend": 2, "u2_user_id": 2, "mb_user_id": 2, "mb_review_id": "A", "r_review_id": "A" }
+{ "u1_user_id": 1, "fw1_user_id": 1, "fw1_friend": 3, "u2_user_id": 3, "mb_user_id": 3, "mb_review_id": "B", "r_review_id": "B", "fw2_user_id": 3, "fw2_friend": 4, "u3_user_id": 4 }
+{ "u1_user_id": 1, "fw1_user_id": 1, "fw1_friend": 3, "u2_user_id": 3, "mb_user_id": 3, "mb_review_id": "B", "r_review_id": "B", "fw2_user_id": 3, "fw2_friend": 5, "u3_user_id": 5 }
+{ "u1_user_id": 3, "fw1_user_id": 3, "fw1_friend": 4, "u2_user_id": 4 }
+{ "u1_user_id": 3, "fw1_user_id": 3, "fw1_friend": 5, "u2_user_id": 5 }

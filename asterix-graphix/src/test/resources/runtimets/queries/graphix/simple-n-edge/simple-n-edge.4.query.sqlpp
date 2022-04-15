@@ -1,0 +1,48 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Three query edges, single vertex definition on both sides.
+FROM GRAPH  VERTEX (:User)
+                   PRIMARY KEY (user_id)
+                   AS Yelp.Users,
+            VERTEX (:Review)
+                   PRIMARY KEY (review_id)
+                   AS Yelp.Reviews,
+            EDGE   (:Review)-[:MADE_BY]->(:User)
+                   SOURCE KEY (review_id)
+                   DESTINATION KEY (user_id)
+                   AS ( FROM    Yelp.Reviews R
+                        SELECT  R.review_id, R.user_id )
+MATCH       (u:User)<-[mb1:MADE_BY]-(r1:Review),
+            (u)<-[mb2:MADE_BY]-(r2:Review),
+            (u)<-[mb3:MADE_BY]-(r3:Review)
+SELECT      u.user_id AS u_user_id,
+            r1.review_id AS r1_review_id,
+            r2.review_id AS r2_review_id,
+            r3.review_id AS r3_review_id,
+            mb1.user_id AS mb1_user_id,
+            mb2.user_id AS mb2_user_id,
+            mb3.user_id AS mb3_user_id,
+            mb1.review_id AS mb1_review_id,
+            mb2.review_id AS mb2_review_id,
+            mb3.review_id AS mb3_review_id
+ORDER BY    u_user_id,
+            r1_review_id,
+            r2_review_id,
+            r3_review_id;

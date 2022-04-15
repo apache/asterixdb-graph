@@ -22,7 +22,7 @@ import java.util.Collection;
 
 import org.apache.asterix.test.common.TestExecutor;
 import org.apache.asterix.testframework.context.TestCaseContext;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.hyracks.util.file.FileUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -32,10 +32,9 @@ import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class GraphixMetadataTest {
-    private static final String PATH_ACTUAL = "target" + File.separator + "mdtest" + File.separator;
-    private static final String PATH_BASE =
-            StringUtils.join(new String[] { "src", "test", "resources", "metadata" + File.separator }, File.separator);
-    private static final String TEST_CONFIG_FILE_NAME = "src/main/resources/cc.conf";
+    private static final String PATH_ACTUAL = FileUtil.joinPath("target", "mdtest");
+    private static final String PATH_BASE = FileUtil.joinPath("src", "test", "resources", "metadatats");
+    private static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "main", "resources", "cc.conf");
 
     private static final TestExecutor testExecutor = new TestExecutor();
     private static final GraphixIntegrationUtil integrationUtil = new GraphixIntegrationUtil();
@@ -50,7 +49,7 @@ public class GraphixMetadataTest {
     public static void setUp() throws Exception {
         //noinspection ResultOfMethodCallIgnored
         new File(PATH_ACTUAL).mkdirs();
-        integrationUtil.init(true, TEST_CONFIG_FILE_NAME);
+        integrationUtil.init(true, FILE_TEST_CONFIG);
     }
 
     @AfterClass

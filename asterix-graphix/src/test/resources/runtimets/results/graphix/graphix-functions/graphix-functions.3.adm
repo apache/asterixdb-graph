@@ -1,0 +1,8 @@
+{ "vertexProperties": { "review_id": "A", "user_id": 1 }, "vertexDetail": { "Label": "Review", "PrimaryKey": { "review_id": "A" } }, "vertexKey": { "review_id": "A" }, "vertexLabel": "Review" }
+{ "vertexProperties": { "review_id": "B", "user_id": 2 }, "vertexDetail": { "Label": "Review", "PrimaryKey": { "review_id": "B" } }, "vertexKey": { "review_id": "B" }, "vertexLabel": "Review" }
+{ "vertexProperties": { "user_id": 1 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 1 } }, "vertexKey": { "user_id": 1 }, "vertexLabel": "User" }
+{ "vertexProperties": { "user_id": 2 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 2 } }, "vertexKey": { "user_id": 2 }, "vertexLabel": "User" }
+{ "vertexProperties": { "user_id": 3 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 3 } }, "vertexKey": { "user_id": 3 }, "vertexLabel": "User" }
+{ "vertexProperties": { "user_id": 4 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 4 } }, "vertexKey": { "user_id": 4 }, "vertexLabel": "User" }
+{ "vertexProperties": { "user_id": 5 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 5 } }, "vertexKey": { "user_id": 5 }, "vertexLabel": "User" }
+{ "vertexProperties": { "user_id": 6 }, "vertexDetail": { "Label": "User", "PrimaryKey": { "user_id": 6 } }, "vertexKey": { "user_id": 6 }, "vertexLabel": "User" }

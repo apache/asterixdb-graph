@@ -19,8 +19,11 @@
 package org.apache.asterix.graphix.lang.util;
 
 import java.rmi.RemoteException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import org.apache.asterix.common.api.IMetadataLockManager;
 import org.apache.asterix.common.exceptions.CompilationException;
@@ -30,14 +33,22 @@ import org.apache.asterix.graphix.app.translator.GraphixQueryTranslator;
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
 import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
+import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
+import org.apache.asterix.graphix.lang.rewrites.visitor.AbstractGraphixQueryVisitor;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
 import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
-import org.apache.asterix.graphix.metadata.entities.Graph;
-import org.apache.asterix.graphix.metadata.entities.GraphDependencies;
+import org.apache.asterix.graphix.metadata.entity.dependency.DependencyIdentifier;
+import org.apache.asterix.graphix.metadata.entity.dependency.GraphRequirements;
+import org.apache.asterix.graphix.metadata.entity.dependency.IEntityRequirements;
+import org.apache.asterix.graphix.metadata.entity.schema.Edge;
+import org.apache.asterix.graphix.metadata.entity.schema.Graph;
+import org.apache.asterix.graphix.metadata.entity.schema.Schema;
+import org.apache.asterix.graphix.metadata.entity.schema.Vertex;
 import org.apache.asterix.lang.common.base.Expression;
+import org.apache.asterix.lang.common.base.ILangExpression;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
 import org.apache.asterix.metadata.declared.MetadataProvider;
@@ -46,13 +57,43 @@ import org.apache.asterix.translator.IStatementExecutor;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
 
 public final class GraphStatementHandlingUtil {
-    public static void acquireGraphWriteLocks(MetadataProvider metadataProvider, DataverseName activeDataverseName,
-            String graphName) throws AlgebricksException {
+    public static void acquireGraphExtensionWriteLocks(MetadataProvider metadataProvider,
+            DataverseName activeDataverseName, String graphName) throws AlgebricksException {
         // Acquire a READ lock on our dataverse and a WRITE lock on our graph.
         IMetadataLockManager metadataLockManager = metadataProvider.getApplicationContext().getMetadataLockManager();
         metadataLockManager.acquireDataverseReadLock(metadataProvider.getLocks(), activeDataverseName);
         metadataLockManager.acquireExtensionEntityWriteLock(metadataProvider.getLocks(),
                 GraphixMetadataExtension.GRAPHIX_METADATA_EXTENSION_ID.getName(), activeDataverseName, graphName);
+    }
+
+    public static void throwIfDependentExists(MetadataTransactionContext mdTxnCtx,
+            DependencyIdentifier dependencyIdentifier) throws AlgebricksException {
+        for (IEntityRequirements requirements : GraphixMetadataExtension.getAllEntityRequirements(mdTxnCtx)) {
+            for (DependencyIdentifier dependency : requirements) {
+                if (dependency.equals(dependencyIdentifier)) {
+                    throw new CompilationException(ErrorCode.CANNOT_DROP_OBJECT_DEPENDENT_EXISTS,
+                            dependency.getDependencyKind(), dependency.getDisplayName(),
+                            requirements.getDependentKind(), requirements.getDisplayName());
+                }
+            }
+        }
+    }
+
+    public static void collectDependenciesOnGraph(Expression expression, DataverseName defaultDataverseName,
+            Set<DependencyIdentifier> graphDependencies) throws CompilationException {
+        expression.accept(new AbstractGraphixQueryVisitor() {
+            @Override
+            public Expression visit(FromGraphClause fromGraphClause, ILangExpression arg) {
+                if (fromGraphClause.getGraphName() != null) {
+                    String graphName = fromGraphClause.getGraphName().getValue();
+                    DataverseName dataverseName = (fromGraphClause.getDataverseName() == null) ? defaultDataverseName
+                            : fromGraphClause.getDataverseName();
+                    DependencyIdentifier.Kind graphKind = DependencyIdentifier.Kind.GRAPH;
+                    graphDependencies.add(new DependencyIdentifier(dataverseName, graphName, graphKind));
+                }
+                return null;
+            }
+        }, null);
     }
 
     public static void handleCreateGraph(CreateGraphStatement cgs, MetadataProvider metadataProvider,
@@ -61,8 +102,8 @@ public final class GraphStatementHandlingUtil {
         metadataProvider.setMetadataTxnContext(mdTxnCtx);
 
         // Ensure that our active dataverse exists.
-        Dataverse dv = MetadataManager.INSTANCE.getDataverse(mdTxnCtx, activeDataverseName);
-        if (dv == null) {
+        Dataverse dataverse = MetadataManager.INSTANCE.getDataverse(mdTxnCtx, activeDataverseName);
+        if (dataverse == null) {
             throw new CompilationException(ErrorCode.UNKNOWN_DATAVERSE, cgs.getSourceLocation(), activeDataverseName);
         }
 
@@ -78,13 +119,23 @@ public final class GraphStatementHandlingUtil {
                         "Graph " + existingGraph.getGraphName() + " already exists.");
             }
         }
+        IEntityRequirements existingRequirements = null;
+        if (existingGraph != null) {
+            existingRequirements = GraphixMetadataExtension.getAllEntityRequirements(mdTxnCtx).stream()
+                    .filter(r -> r.getDataverseName().equals(activeDataverseName))
+                    .filter(r -> r.getEntityName().equals(cgs.getGraphName()))
+                    .filter(r -> r.getDependentKind().equals(IEntityRequirements.DependentKind.GRAPH)).findFirst()
+                    .orElseThrow(() -> new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE,
+                            cgs.getSourceLocation(), "Graph dependencies for " + cgs.getGraphName()
+                                    + " exist, but the graph itself does not."));
+        }
 
         // Build the graph schema.
         GraphIdentifier graphIdentifier = new GraphIdentifier(activeDataverseName, cgs.getGraphName());
-        Graph.Schema.Builder schemaBuilder = new Graph.Schema.Builder(graphIdentifier);
+        Schema.Builder schemaBuilder = new Schema.Builder(graphIdentifier);
         Map<GraphElementIdentifier, GraphElementDecl> graphElementDecls = new LinkedHashMap<>();
-        for (GraphConstructor.VertexElement vertex : cgs.getVertexElements()) {
-            Graph.Vertex schemaVertex =
+        for (GraphConstructor.VertexConstructor vertex : cgs.getVertexElements()) {
+            Vertex schemaVertex =
                     schemaBuilder.addVertex(vertex.getLabel(), vertex.getPrimaryKeyFields(), vertex.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
@@ -105,21 +156,13 @@ public final class GraphStatementHandlingUtil {
 
                 default:
                     throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, vertex.getSourceLocation(),
-                            "Schema vertex was not returned, but the error is not a conflicting primary key!");
+                            "Constructor vertex was not returned, but the error is not a conflicting primary key!");
             }
         }
-        for (GraphConstructor.EdgeElement edge : cgs.getEdgeElements()) {
-            Graph.Edge schemaEdge;
-            if (edge.getDefinition() == null) {
-                schemaEdge = schemaBuilder.addEdge(edge.getEdgeLabel(), edge.getDestinationLabel(),
-                        edge.getSourceLabel(), edge.getDestinationKeyFields());
-
-            } else {
-                schemaEdge = schemaBuilder.addEdge(edge.getEdgeLabel(), edge.getDestinationLabel(),
-                        edge.getSourceLabel(), edge.getPrimaryKeyFields(), edge.getDestinationKeyFields(),
-                        edge.getSourceKeyFields(), edge.getDefinition());
-            }
-
+        for (GraphConstructor.EdgeConstructor edge : cgs.getEdgeElements()) {
+            Edge schemaEdge =
+                    schemaBuilder.addEdge(edge.getEdgeLabel(), edge.getDestinationLabel(), edge.getSourceLabel(),
+                            edge.getDestinationKeyFields(), edge.getSourceKeyFields(), edge.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
                     if (edge.getDefinition() != null) {
@@ -145,47 +188,51 @@ public final class GraphStatementHandlingUtil {
                             "Destination vertex " + edge.getDestinationLabel() + " not found in the edge "
                                     + edge.getEdgeLabel() + ".");
 
-                case CONFLICTING_PRIMARY_KEY:
-                case CONFLICTING_SOURCE_VERTEX:
-                case CONFLICTING_DESTINATION_VERTEX:
+                case CONFLICTING_SOURCE_KEY:
+                case CONFLICTING_DESTINATION_KEY:
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, edge.getSourceLocation(),
                             "Conflicting edge with the same label found: " + edge.getEdgeLabel());
 
                 default:
                     throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, edge.getSourceLocation(),
-                            "Schema edge was not returned, and an unexpected error encountered");
+                            "Edge constructor was not returned, and an unexpected error encountered");
             }
         }
 
-        // Verify that each element definition is usable.
         GraphixQueryRewriter graphixQueryRewriter = ((GraphixQueryTranslator) statementExecutor).getQueryRewriter();
-        metadataProvider.setDefaultDataverse(dv);
+        metadataProvider.setDefaultDataverse(dataverse);
+        DataverseName dataverseName = (cgs.getDataverseName() != null) ? cgs.getDataverseName() : activeDataverseName;
+        GraphRequirements requirements = new GraphRequirements(dataverseName, cgs.getGraphName());
         for (GraphElementDecl graphElementDecl : graphElementDecls.values()) {
+            // Determine the graph dependencies using the raw body.
+            Set<DependencyIdentifier> graphDependencies = new HashSet<>();
+            for (Expression rawBody : graphElementDecl.getBodies()) {
+                collectDependenciesOnGraph(rawBody, activeDataverseName, graphDependencies);
+            }
+            requirements.loadGraphDependencies(graphDependencies);
+
+            // Verify that each element definition is usable.
             ((GraphixQueryTranslator) statementExecutor).setGraphElementNormalizedBody(metadataProvider,
                     graphElementDecl, graphixQueryRewriter);
-        }
 
-        // Build our dependencies (collected over all graph element bodies).
-        GraphDependencies graphDependencies = new GraphDependencies();
-        for (GraphElementDecl graphElementDecl : graphElementDecls.values()) {
-            if (graphElementDecl.getNormalizedBodies().size() != graphElementDecl.getBodies().size()) {
-                // We should have set the normalized body by calling {@code normalizeGraphElementAsQuery} beforehand.
-                throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE,
-                        graphElementDecl.getSourceLocation(), "Normalized body not found!");
-            }
+            // Determine the non-graph dependencies using the normalized body.
             for (Expression normalizedBody : graphElementDecl.getNormalizedBodies()) {
-                graphDependencies.collectDependencies(normalizedBody, graphixQueryRewriter);
+                requirements.loadNonGraphDependencies(normalizedBody, graphixQueryRewriter);
             }
         }
 
-        // Add / upsert our graph to our metadata.
-        Graph newGraph = new Graph(graphIdentifier, schemaBuilder.build(), graphDependencies);
+        // Add / upsert our graph + requirements to our metadata.
+        Graph newGraph = new Graph(graphIdentifier, schemaBuilder.build());
         if (existingGraph == null) {
             MetadataManager.INSTANCE.addEntity(mdTxnCtx, newGraph);
+            MetadataManager.INSTANCE.addEntity(mdTxnCtx, requirements);
 
         } else {
+            requirements.setPrimaryKeyValue(existingRequirements.getPrimaryKeyValue());
             MetadataManager.INSTANCE.upsertEntity(mdTxnCtx, newGraph);
+            MetadataManager.INSTANCE.upsertEntity(mdTxnCtx, requirements);
         }
+
         MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
     }
 
@@ -220,6 +267,20 @@ public final class GraphStatementHandlingUtil {
             }
         }
 
+        // Verify that no requirements exist on our graph.
+        DataverseName dataverseName = (gds.getDataverseName() == null) ? activeDataverseName : gds.getDataverseName();
+        DependencyIdentifier dependencyIdentifier =
+                new DependencyIdentifier(dataverseName, gds.getGraphName(), DependencyIdentifier.Kind.GRAPH);
+        throwIfDependentExists(mdTxnCtx, dependencyIdentifier);
+        Optional<IEntityRequirements> requirements = GraphixMetadataExtension.getAllEntityRequirements(mdTxnCtx)
+                .stream().filter(r -> r.getDataverseName().equals(dataverseName))
+                .filter(r -> r.getEntityName().equals(gds.getGraphName()))
+                .filter(r -> r.getDependentKind().equals(IEntityRequirements.DependentKind.GRAPH)).findFirst();
+        if (requirements.isPresent()) {
+            MetadataManager.INSTANCE.deleteEntity(mdTxnCtx, requirements.get());
+        }
+
+        // Finally, perform the deletion.
         MetadataManager.INSTANCE.deleteEntity(mdTxnCtx, graph);
         MetadataManager.INSTANCE.commitTransaction(mdTxnCtx);
     }

@@ -19,24 +19,29 @@
 package org.apache.asterix.graphix.lang.parser;
 
 import java.io.StringReader;
-import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
+import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
-import org.apache.asterix.graphix.metadata.entities.Graph;
+import org.apache.asterix.graphix.metadata.entity.schema.Element;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
 public final class GraphElementBodyParser {
     // Just a wrapper for the parseGraphElementBody method.
-    public static GraphElementDecl parse(Graph.Element element, GraphixParserFactory parserFactory,
+    public static GraphElementDecl parse(Element element, GraphixParserFactory parserFactory,
             IWarningCollector warningCollector) throws CompilationException {
         GraphElementDecl graphElementDecl = null;
-        for (String definition : element.getDefinitions()) {
-            if (Objects.equals(definition, "")) {
-                continue;
-            }
+        for (String definition : element.getDefinitionBodies()) {
+            // Parse our the definition.
             GraphixParser parser = (GraphixParser) parserFactory.createParser(new StringReader(definition));
-            GraphElementDecl parsedElementDecl = parser.parseGraphElementBody(element.getIdentifier());
+            GraphElementDecl parsedElementDecl;
+            try {
+                parsedElementDecl = parser.parseGraphElementBody(element.getIdentifier());
+
+            } catch (CompilationException e) {
+                throw new CompilationException(ErrorCode.COMPILATION_ERROR,
+                        "Bad definition for a graph element: " + e.getMessage());
+            }
 
             // Accumulate the element bodies.
             if (graphElementDecl == null) {
