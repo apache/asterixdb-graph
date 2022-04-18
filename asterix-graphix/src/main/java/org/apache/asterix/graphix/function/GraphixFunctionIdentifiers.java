@@ -65,10 +65,10 @@ public class GraphixFunctionIdentifiers {
             new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-dest-key", 1);
     public static final FunctionIdentifier EDGE_DIRECTION =
             new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-direction", 1);
-    public static final FunctionIdentifier EDGE_SOURCE_VERTEX =
-            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-source", 3);
-    public static final FunctionIdentifier EDGE_DEST_VERTEX =
-            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-dest", 3);
+    public static final FunctionIdentifier EDGE_LEFT_TO_RIGHT_IF =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-left-to-right-if", 3);
+    public static final FunctionIdentifier EDGE_RIGHT_TO_LEFT_IF =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "edge-right-to-left-if", 3);
 
     // Functions that can be called on paths.
     public static final FunctionIdentifier PATH_HOP_COUNT =
@@ -94,8 +94,8 @@ public class GraphixFunctionIdentifiers {
         functionRegister.accept(EDGE_SOURCE_KEY);
         functionRegister.accept(EDGE_DEST_KEY);
         functionRegister.accept(EDGE_DIRECTION);
-        functionRegister.accept(EDGE_SOURCE_VERTEX);
-        functionRegister.accept(EDGE_DEST_VERTEX);
+        functionRegister.accept(EDGE_LEFT_TO_RIGHT_IF);
+        functionRegister.accept(EDGE_RIGHT_TO_LEFT_IF);
         functionRegister.accept(PATH_HOP_COUNT);
         functionRegister.accept(PATH_VERTICES);
         functionRegister.accept(PATH_EDGES);

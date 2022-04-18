@@ -35,17 +35,18 @@ import org.apache.asterix.lang.common.struct.OperatorType;
 import org.apache.asterix.lang.sqlpp.expression.CaseExpression;
 
 /**
- * Given the expression *_VERTEX(myEdgeVar, leftVertexVar, rightVertexVar), rewrite this function to return either
- * vertex (depending on our owner).
+ * Given the expression EDGE*_IF(myEdgeVar, expr1, expr2), rewrite this function to return either expression (depending
+ * on our owner).
+ * 1. Access our edge direction.
  * 2. Build two conditions: one where our edge direction is equal to LEFT_TO_RIGHT, and another where our edge direction
  * is equal to RIGHT_TO_LEFT.
  * 3. Build our case statement.
  */
-public class EdgeVertexFunctionRewrite implements IFunctionRewrite {
+public class EdgeIfFunctionRewrite implements IFunctionRewrite {
     private final boolean isSourceVertex;
 
-    public EdgeVertexFunctionRewrite(boolean isSourceVertex) {
-        this.isSourceVertex = isSourceVertex;
+    public EdgeIfFunctionRewrite(boolean isSourceRewrite) {
+        this.isSourceVertex = isSourceRewrite;
     }
 
     @Override

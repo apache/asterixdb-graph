@@ -39,12 +39,8 @@ public class GraphixFunctionAliases {
         functionAliasMap.put("destination-key", GraphixFunctionIdentifiers.EDGE_DEST_KEY);
         functionAliasMap.put("dir", GraphixFunctionIdentifiers.EDGE_DIRECTION);
         functionAliasMap.put("direction", GraphixFunctionIdentifiers.EDGE_DIRECTION);
-        functionAliasMap.put("edge-source-vertex", GraphixFunctionIdentifiers.EDGE_SOURCE_VERTEX);
-        functionAliasMap.put("source-vertex", GraphixFunctionIdentifiers.EDGE_SOURCE_VERTEX);
-        functionAliasMap.put("edge-dest-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
-        functionAliasMap.put("dest-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
-        functionAliasMap.put("edge-destination-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
-        functionAliasMap.put("destination-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
+        functionAliasMap.put("left-to-right-if", GraphixFunctionIdentifiers.EDGE_LEFT_TO_RIGHT_IF);
+        functionAliasMap.put("right-to-left-if", GraphixFunctionIdentifiers.EDGE_RIGHT_TO_LEFT_IF);
 
         // Build aliases for path functions.
         functionAliasMap.put("hop-count", GraphixFunctionIdentifiers.PATH_HOP_COUNT);

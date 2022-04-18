@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.asterix.common.functions.FunctionSignature;
-import org.apache.asterix.graphix.function.rewrite.EdgeVertexFunctionRewrite;
+import org.apache.asterix.graphix.function.rewrite.EdgeIfFunctionRewrite;
 import org.apache.asterix.graphix.function.rewrite.IFunctionRewrite;
 import org.apache.asterix.graphix.function.rewrite.PathEdgesFunctionRewrite;
 import org.apache.asterix.graphix.function.rewrite.PathHopCountFunctionRewrite;
@@ -115,8 +115,8 @@ public class FunctionRewriteMap {
             FunctionSignature functionSignature = new FunctionSignature(BuiltinFunctions.RECORD_MERGE);
             return new CallExpr(functionSignature, List.of(elementDetailAccess, edgeDetailAccess));
         });
-        graphixFunctionMap.put(GraphixFunctionIdentifiers.EDGE_SOURCE_VERTEX, new EdgeVertexFunctionRewrite(true));
-        graphixFunctionMap.put(GraphixFunctionIdentifiers.EDGE_DEST_VERTEX, new EdgeVertexFunctionRewrite(false));
+        graphixFunctionMap.put(GraphixFunctionIdentifiers.EDGE_LEFT_TO_RIGHT_IF, new EdgeIfFunctionRewrite(true));
+        graphixFunctionMap.put(GraphixFunctionIdentifiers.EDGE_RIGHT_TO_LEFT_IF, new EdgeIfFunctionRewrite(false));
 
         // Add our path function rewrites.
         graphixFunctionMap.put(GraphixFunctionIdentifiers.PATH_HOP_COUNT, new PathHopCountFunctionRewrite());
