@@ -20,24 +20,16 @@ package org.apache.asterix.graphix.lang.rewrites;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
-import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.algebra.compiler.provider.GraphixCompilationProvider;
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
-import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
-import org.apache.asterix.graphix.lang.expression.GraphElementBodyExpr;
 import org.apache.asterix.graphix.lang.parser.GraphixParserFactory;
 import org.apache.asterix.graphix.lang.rewrites.common.ElementLookupTable;
 import org.apache.asterix.graphix.lang.rewrites.print.SqlppASTPrintQueryVisitor;
@@ -54,18 +46,15 @@ import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.IParserFactory;
 import org.apache.asterix.lang.common.base.IReturningStatement;
-import org.apache.asterix.lang.common.expression.AbstractCallExpression;
 import org.apache.asterix.lang.common.rewrites.LangRewritingContext;
 import org.apache.asterix.lang.common.statement.Query;
 import org.apache.asterix.lang.common.struct.VarIdentifier;
 import org.apache.asterix.lang.common.util.ExpressionUtils;
 import org.apache.asterix.lang.sqlpp.rewrites.SqlppFunctionBodyRewriter;
 import org.apache.asterix.lang.sqlpp.rewrites.SqlppQueryRewriter;
-import org.apache.asterix.lang.sqlpp.rewrites.visitor.SqlppGatherFunctionCallsVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.metadata.entities.Dataverse;
 import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
-import org.apache.hyracks.api.exceptions.SourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -74,6 +63,7 @@ import org.apache.logging.log4j.Logger;
  * 1. Perform an error-checking on the fresh AST (immediately after parsing).
  * 2. Populate the unknowns in our AST (e.g. vertex / edge variables, projections, GROUP-BY keys).
  * 3. Perform a variable-scoping pass to identify illegal variables (either duplicate or out-of-scope).
+ * 4. Resolve our Graphix function calls
  * 4. For the remainder of our Graphix function calls, rewrite each call into a subtree w/o Graphix functions.
  * 5. Perform resolution of unlabeled vertices / edges, as well as edge directions.
  * 6. Using the labels of the vertices / edges in our AST, fetch the relevant graph elements from our metadata.
@@ -130,38 +120,46 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
         }
     }
 
-    public void loadNormalizedGraphElement(GraphixRewritingContext graphixRewritingContext, IReturningStatement topExpr,
+    public void loadNormalizedGraphElement(GraphixRewritingContext graphixRewritingContext,
             GraphElementDecl graphElementDecl) throws CompilationException {
-        // Gather all function calls.
-        Deque<AbstractCallExpression> workQueue = new ArrayDeque<>();
-        SqlppGatherFunctionCallsVisitor callVisitor = new SqlppGatherFunctionCallsVisitor(workQueue);
-        for (Expression expr : topExpr.getDirectlyEnclosedExpressions()) {
-            expr.accept(callVisitor, null);
-        }
+        List<Expression> normalizedBodies = graphElementDecl.getNormalizedBodies();
+        if (normalizedBodies.size() != graphElementDecl.getBodies().size()) {
+            for (Expression body : graphElementDecl.getBodies()) {
+                Dataverse defaultDataverse = graphixRewritingContext.getMetadataProvider().getDefaultDataverse();
+                Dataverse targetDataverse;
 
-        AbstractCallExpression fnCall;
-        while ((fnCall = workQueue.poll()) != null) {
-            // We only care about graph element declarations.
-            FunctionSignature functionSignature = fnCall.getFunctionSignature();
-            if (!functionSignature.getName().equals(GraphixFunctionIdentifiers.GRAPH_ELEMENT_BODY.getName())
-                    || !Objects.equals(functionSignature.getDataverseName(), GraphixFunctionIdentifiers.GRAPHIX_DV)) {
-                continue;
-            }
+                // We might need to change our dataverse, if the element definition requires a different one.
+                DataverseName elementName = graphElementDecl.getIdentifier().getGraphIdentifier().getDataverseName();
+                if (elementName.equals(defaultDataverse.getDataverseName())) {
+                    targetDataverse = defaultDataverse;
 
-            // Get our normalized element bodies, by calling our rewriter.
-            List<Expression> normalizedBodies = graphElementDecl.getNormalizedBodies();
-            if (normalizedBodies.size() != graphElementDecl.getBodies().size()) {
-                GraphIdentifier graphIdentifier = graphElementDecl.getGraphIdentifier();
-                for (Expression body : graphElementDecl.getBodies()) {
-                    Expression normalizedBody =
-                            rewriteGraphElementBody(graphixRewritingContext, graphIdentifier.getDataverseName(), body,
-                                    Collections.emptyList(), graphElementDecl.getSourceLocation());
-                    normalizedBodies.add(normalizedBody);
+                } else {
+                    try {
+                        targetDataverse = graphixRewritingContext.getMetadataProvider().findDataverse(elementName);
+
+                    } catch (AlgebricksException e) {
+                        throw new CompilationException(ErrorCode.UNKNOWN_DATAVERSE, e,
+                                graphElementDecl.getSourceLocation(), elementName);
+                    }
+                }
+                graphixRewritingContext.getMetadataProvider().setDefaultDataverse(targetDataverse);
+
+                // Get the body of the rewritten query.
+                try {
+                    Query wrappedQuery = ExpressionUtils.createWrappedQuery(body, graphElementDecl.getSourceLocation());
+                    LangRewritingContext langRewritingContext = graphixRewritingContext.getLangRewritingContext();
+                    bodyRewriter.rewrite(langRewritingContext, wrappedQuery, false, false, List.of());
+                    normalizedBodies.add(wrappedQuery.getBody());
+
+                } catch (CompilationException e) {
+                    throw new CompilationException(ErrorCode.COMPILATION_ERROR, body.getSourceLocation(),
+                            "Bad definition for a graph element: " + e.getMessage());
+
+                } finally {
+                    // Switch back to the working dataverse.
+                    graphixRewritingContext.getMetadataProvider().setDefaultDataverse(defaultDataverse);
                 }
             }
-
-            // We should only have one element. We can safely break here.
-            break;
         }
     }
 
@@ -197,9 +195,7 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
                         parserFactory, graphixRewritingContext.getWarningCollector());
         topStatement.getBody().accept(elementLookupTableVisitor, null);
         for (GraphElementDecl graphElementDecl : elementLookupTable) {
-            Query wrappedQuery = ExpressionUtils.createWrappedQuery(
-                    new GraphElementBodyExpr(graphElementDecl.getIdentifier()), graphElementDecl.getSourceLocation());
-            loadNormalizedGraphElement(graphixRewritingContext, wrappedQuery, graphElementDecl);
+            loadNormalizedGraphElement(graphixRewritingContext, graphElementDecl);
         }
 
         // Perform an analysis pass to get our edge dependencies, dangling vertices, and FROM-GRAPH-CLAUSE variables.
@@ -243,42 +239,5 @@ public class GraphixQueryRewriter extends SqlppQueryRewriter {
                 LOGGER.debug("Ending SQL++ AST rewrites.");
             }
         };
-    }
-
-    private Expression rewriteGraphElementBody(GraphixRewritingContext graphixRewritingContext,
-            DataverseName elementDataverse, Expression bodyExpr, List<VarIdentifier> externalVars,
-            SourceLocation sourceLoc) throws CompilationException {
-        Dataverse defaultDataverse = graphixRewritingContext.getMetadataProvider().getDefaultDataverse();
-        Dataverse targetDataverse;
-
-        // We might need to change our dataverse, if the element definition requires a different one.
-        if (elementDataverse.equals(defaultDataverse.getDataverseName())) {
-            targetDataverse = defaultDataverse;
-
-        } else {
-            try {
-                targetDataverse = graphixRewritingContext.getMetadataProvider().findDataverse(elementDataverse);
-
-            } catch (AlgebricksException e) {
-                throw new CompilationException(ErrorCode.UNKNOWN_DATAVERSE, e, sourceLoc, elementDataverse);
-            }
-        }
-        graphixRewritingContext.getMetadataProvider().setDefaultDataverse(targetDataverse);
-
-        // Get the body of the rewritten query.
-        try {
-            Query wrappedQuery = ExpressionUtils.createWrappedQuery(bodyExpr, sourceLoc);
-            LangRewritingContext langRewritingContext = graphixRewritingContext.getLangRewritingContext();
-            bodyRewriter.rewrite(langRewritingContext, wrappedQuery, false, false, externalVars);
-            return wrappedQuery.getBody();
-
-        } catch (CompilationException e) {
-            throw new CompilationException(ErrorCode.COMPILATION_ERROR, bodyExpr.getSourceLocation(),
-                    "Bad definition for a graph element: " + e.getMessage());
-
-        } finally {
-            // Switch back to the working dataverse.
-            graphixRewritingContext.getMetadataProvider().setDefaultDataverse(defaultDataverse);
-        }
     }
 }

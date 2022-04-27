@@ -33,7 +33,6 @@ import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.compiler.provider.ILangCompilationProvider;
 import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
-import org.apache.asterix.graphix.lang.expression.GraphElementBodyExpr;
 import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
 import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
@@ -52,10 +51,8 @@ import org.apache.asterix.lang.common.statement.CreateViewStatement;
 import org.apache.asterix.lang.common.statement.DataverseDropStatement;
 import org.apache.asterix.lang.common.statement.DropDatasetStatement;
 import org.apache.asterix.lang.common.statement.FunctionDropStatement;
-import org.apache.asterix.lang.common.statement.Query;
 import org.apache.asterix.lang.common.statement.SynonymDropStatement;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
-import org.apache.asterix.lang.common.util.ExpressionUtils;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
 import org.apache.asterix.metadata.declared.MetadataProvider;
@@ -76,15 +73,10 @@ public class GraphixQueryTranslator extends QueryTranslator {
 
     public void setGraphElementNormalizedBody(MetadataProvider metadataProvider, GraphElementDecl graphElementDecl,
             GraphixQueryRewriter queryRewriter) throws CompilationException {
-        // Create a query AST for our rewriter to walk through.
-        GraphElementBodyExpr functionCall = new GraphElementBodyExpr(graphElementDecl.getIdentifier());
-        Query query = ExpressionUtils.createWrappedQuery(functionCall, graphElementDecl.getSourceLocation());
-
-        // We call our rewriter to set the normalized bodies of GRAPH-ELEMENT-DECL.
-        LangRewritingContext langRewritingContext = new LangRewritingContext(metadataProvider, declaredFunctions, null,
-                warningCollector, query.getVarCounter());
+        LangRewritingContext langRewritingContext =
+                new LangRewritingContext(metadataProvider, declaredFunctions, null, warningCollector, 0);
         GraphixRewritingContext graphixRewritingContext = new GraphixRewritingContext(langRewritingContext);
-        queryRewriter.loadNormalizedGraphElement(graphixRewritingContext, query, graphElementDecl);
+        queryRewriter.loadNormalizedGraphElement(graphixRewritingContext, graphElementDecl);
     }
 
     /**

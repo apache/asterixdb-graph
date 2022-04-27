@@ -59,12 +59,12 @@ public class EdgeIfFunctionRewrite implements IFunctionRewrite {
         FieldAccessor edgeDirAccess = new FieldAccessor(edgeDetailAccess, directionSuffix);
 
         // Create a LEFT_TO_RIGHT condition.
-        LiteralExpr l2RLiteral = new LiteralExpr(new StringLiteral(EdgeDescriptor.EdgeType.LEFT_TO_RIGHT.name()));
+        LiteralExpr l2RLiteral = new LiteralExpr(new StringLiteral(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT.name()));
         List<Expression> l2ROperands = List.of(edgeDirAccess, l2RLiteral);
         OperatorExpr l2RCondition = new OperatorExpr(l2ROperands, List.of(OperatorType.EQ), false);
 
         // Create a RIGHT_TO_LEFT condition.
-        LiteralExpr r2LLiteral = new LiteralExpr(new StringLiteral(EdgeDescriptor.EdgeType.RIGHT_TO_LEFT.name()));
+        LiteralExpr r2LLiteral = new LiteralExpr(new StringLiteral(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT.name()));
         List<Expression> r2LOperands = List.of(edgeDirAccess, r2LLiteral);
         OperatorExpr r2LCondition = new OperatorExpr(r2LOperands, List.of(OperatorType.EQ), false);
 

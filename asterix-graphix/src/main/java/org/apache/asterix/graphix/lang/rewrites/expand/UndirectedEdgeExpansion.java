@@ -21,22 +21,21 @@ package org.apache.asterix.graphix.lang.rewrites.expand;
 import java.util.List;
 
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 
 /**
  * Given an undirected edge, generate two edges (to feed to the caller's UNION): one edge directed from
- * {@link EdgeDescriptor.EdgeType#LEFT_TO_RIGHT},and another edge directed from
- * {@link EdgeDescriptor.EdgeType#RIGHT_TO_LEFT}.
+ * {@link EdgeDescriptor.EdgeDirection#LEFT_TO_RIGHT},and another edge directed from
+ * {@link EdgeDescriptor.EdgeDirection#RIGHT_TO_LEFT}.
  */
 public class UndirectedEdgeExpansion implements IEdgePatternExpansion {
     @Override
     public Iterable<Iterable<EdgePatternExpr>> expand(EdgePatternExpr edgePatternExpr) {
         // Ensure we have been given the correct type of edge.
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-        if (edgeDescriptor.getEdgeClass() != IGraphExpr.GraphExprKind.EDGE_PATTERN
-                || edgeDescriptor.getEdgeType() != EdgeDescriptor.EdgeType.UNDIRECTED) {
+        if (edgeDescriptor.getPatternType() != EdgeDescriptor.PatternType.EDGE
+                || edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.UNDIRECTED) {
             throw new IllegalArgumentException("Expected an undirected edge, but given a " + edgeDescriptor);
         }
         VertexPatternExpr leftVertex = edgePatternExpr.getLeftVertex();
@@ -44,13 +43,13 @@ public class UndirectedEdgeExpansion implements IEdgePatternExpansion {
 
         // Build our LEFT_TO_RIGHT edge...
         EdgeDescriptor leftToRightEdgeDescriptor =
-                new EdgeDescriptor(EdgeDescriptor.EdgeType.LEFT_TO_RIGHT, IGraphExpr.GraphExprKind.EDGE_PATTERN,
+                new EdgeDescriptor(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT, EdgeDescriptor.PatternType.EDGE,
                         edgeDescriptor.getEdgeLabels(), edgeDescriptor.getVariableExpr(), null, null);
         EdgePatternExpr leftToRightEdge = new EdgePatternExpr(leftVertex, rightVertex, leftToRightEdgeDescriptor);
 
         // ...and our RIGHT_TO_LEFT edge...
         EdgeDescriptor rightToLeftEdgeDescriptor =
-                new EdgeDescriptor(EdgeDescriptor.EdgeType.RIGHT_TO_LEFT, IGraphExpr.GraphExprKind.EDGE_PATTERN,
+                new EdgeDescriptor(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT, EdgeDescriptor.PatternType.EDGE,
                         edgeDescriptor.getEdgeLabels(), edgeDescriptor.getVariableExpr(), null, null);
         EdgePatternExpr rightToLeftEdge = new EdgePatternExpr(leftVertex, rightVertex, rightToLeftEdgeDescriptor);
 

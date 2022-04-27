@@ -31,7 +31,7 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  * A path is composed of a list of {@link VertexPatternExpr} instances and a list of {@link EdgePatternExpr} that
  * utilize the aforementioned vertices. Users can also optionally specify a variable.
  */
-public class PathPatternExpr extends AbstractExpression implements IGraphExpr {
+public class PathPatternExpr extends AbstractExpression {
     private final List<VertexPatternExpr> vertexExpressions;
     private final List<EdgePatternExpr> edgeExpressions;
     private VariableExpr variableExpr;
@@ -62,11 +62,6 @@ public class PathPatternExpr extends AbstractExpression implements IGraphExpr {
     @Override
     public Kind getKind() {
         return null;
-    }
-
-    @Override
-    public GraphExprKind getGraphExprKind() {
-        return GraphExprKind.PATH_PATTERN;
     }
 
     @Override

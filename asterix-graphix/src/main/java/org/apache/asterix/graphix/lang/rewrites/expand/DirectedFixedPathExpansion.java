@@ -23,12 +23,11 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 
 /**
- * Given a sub-path that is **not** {@link EdgeDescriptor.EdgeType#UNDIRECTED} but is fixed in the number of hops
+ * Given a sub-path that is **not** {@link EdgeDescriptor.EdgeDirection#UNDIRECTED} but is fixed in the number of hops
  * (denoted N), we build a single set of N directed simple edges.
  */
 public class DirectedFixedPathExpansion implements IEdgePatternExpansion {
@@ -42,8 +41,8 @@ public class DirectedFixedPathExpansion implements IEdgePatternExpansion {
     public Iterable<Iterable<EdgePatternExpr>> expand(EdgePatternExpr edgePatternExpr) {
         // Ensure we have been given the correct type of sub-path.
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-        if (edgeDescriptor.getEdgeClass() != IGraphExpr.GraphExprKind.PATH_PATTERN
-                || edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.UNDIRECTED
+        if (edgeDescriptor.getPatternType() != EdgeDescriptor.PatternType.PATH
+                || edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED
                 || !Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
             throw new IllegalArgumentException("Expected a directed fixed sub-path, but given a " + edgeDescriptor);
         }
@@ -64,9 +63,10 @@ public class DirectedFixedPathExpansion implements IEdgePatternExpansion {
             }
 
             // Build our EDGE-PATTERN-EXPR.
-            EdgeDescriptor newEdgeDescriptor = new EdgeDescriptor(edgePatternExpr.getEdgeDescriptor().getEdgeType(),
-                    IGraphExpr.GraphExprKind.EDGE_PATTERN, edgePatternExpr.getEdgeDescriptor().getEdgeLabels(),
-                    pathEnumerationEnvironment.getNewEdgeVar(), null, null);
+            EdgeDescriptor newEdgeDescriptor =
+                    new EdgeDescriptor(edgePatternExpr.getEdgeDescriptor().getEdgeDirection(),
+                            EdgeDescriptor.PatternType.EDGE, edgePatternExpr.getEdgeDescriptor().getEdgeLabels(),
+                            pathEnumerationEnvironment.getNewEdgeVar(), null, null);
             EdgePatternExpr newEdgePattern = new EdgePatternExpr(workingLeftVertex, rightVertex, newEdgeDescriptor);
             decomposedEdgeList.add(newEdgePattern);
 

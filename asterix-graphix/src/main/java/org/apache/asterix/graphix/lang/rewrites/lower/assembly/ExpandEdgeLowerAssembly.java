@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.assembly.ExprAssembler;
 import org.apache.asterix.graphix.lang.rewrites.expand.DirectedFixedPathExpansion;
@@ -106,30 +105,30 @@ public class ExpandEdgeLowerAssembly extends AbstractLowerAssembly {
     private Iterable<Iterable<EdgePatternExpr>> expandEdgePatternExpr(EdgePatternExpr edgePatternExpr) {
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
 
-        if (edgeDescriptor.getEdgeType() != EdgeDescriptor.EdgeType.UNDIRECTED
-                && edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.EDGE_PATTERN) {
+        if (edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.UNDIRECTED
+                && edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.EDGE) {
             // We have a single directed edge. We do not need to break this up.
             return List.of(List.of(edgePatternExpr));
 
-        } else if (edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.UNDIRECTED
-                && edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.EDGE_PATTERN) {
+        } else if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED
+                && edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.EDGE) {
             return new UndirectedEdgeExpansion().expand(edgePatternExpr);
 
-        } else { // edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.PATH_PATTERN
+        } else { // edgeDescriptor.getEdgeClass() == EdgeDescriptor.PatternType.PATH
             PathEnumerationEnvironment decompositionEnvironment = new PathEnumerationEnvironment(edgePatternExpr,
                     lowerSupplierContext, generatedVertexConjuncts::addLast, generatedEdgeConjuncts::addLast,
                     generatedReboundExpressions::addLast);
 
             IEdgePatternExpansion edgePatternDecomposition;
-            if (edgeDescriptor.getEdgeType() != EdgeDescriptor.EdgeType.UNDIRECTED
+            if (edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.UNDIRECTED
                     && Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
                 edgePatternDecomposition = new DirectedFixedPathExpansion(decompositionEnvironment);
 
-            } else if (edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.UNDIRECTED
+            } else if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED
                     && Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
                 edgePatternDecomposition = new UndirectedFixedPathExpansion(decompositionEnvironment);
 
-            } else if (edgeDescriptor.getEdgeType() != EdgeDescriptor.EdgeType.UNDIRECTED
+            } else if (edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.UNDIRECTED
                     && !Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
                 edgePatternDecomposition = new DirectedVarPathExpansion(decompositionEnvironment);
 
@@ -202,7 +201,7 @@ public class ExpandEdgeLowerAssembly extends AbstractLowerAssembly {
                     Function<GraphElementIdentifier, ElementLabel> rightEdgeLabelAccess;
                     Function<GraphElementIdentifier, List<List<String>>> leftEdgeKeyAccess;
                     Function<GraphElementIdentifier, List<List<String>>> rightEdgeKeyAccess;
-                    if (edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.LEFT_TO_RIGHT) {
+                    if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT) {
                         leftEdgeKeyAccess = elementLookupTable::getEdgeSourceKeys;
                         rightEdgeKeyAccess = elementLookupTable::getEdgeDestKeys;
                         leftEdgeLabelAccess = elementLookupTable::getEdgeSourceLabel;

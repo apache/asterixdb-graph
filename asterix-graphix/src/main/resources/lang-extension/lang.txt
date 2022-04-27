@@ -26,7 +26,6 @@ import org.apache.asterix.graphix.lang.clause.GraphSelectBlock;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.optype.MatchType;
@@ -577,7 +576,7 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
   VariableExpr edgeVariable = null;
 
   // We default to undirected edges.
-  EdgeDescriptor.EdgeType edgeType = EdgeDescriptor.EdgeType.UNDIRECTED;
+  EdgeDescriptor.EdgeDirection edgeDirection = EdgeDescriptor.EdgeDirection.UNDIRECTED;
 }
 {
   (
@@ -590,11 +589,11 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
       ( <COLON> edgeDetail = EdgeDetail() )?
       <RIGHTBRACKET> <MINUS>
     )?
-    ( <GT> { edgeType = EdgeDescriptor.EdgeType.LEFT_TO_RIGHT; } )?
+    ( <GT> { edgeDirection = EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT; } )?
     |
     <LT> {
       startToken = token;
-      edgeType = EdgeDescriptor.EdgeType.RIGHT_TO_LEFT;
+      edgeDirection = EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT;
     }
     <MINUS>
     (
@@ -607,8 +606,8 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
     )?
   )
   {
-    // Edges (by default) are of class EDGE_PATTERN and are not sub-paths.
-    IGraphExpr.GraphExprKind edgeClass = IGraphExpr.GraphExprKind.EDGE_PATTERN;
+    // Edges (by default) are of pattern type EDGE and are not sub-paths.
+    EdgeDescriptor.PatternType patternType = EdgeDescriptor.PatternType.EDGE;
     Integer hopCountMin = 1;
     Integer hopCountMax = 1;
 
@@ -618,13 +617,13 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
 
       // We have explicitly specified "{" and "}". Use sub-path semantics.
       if (edgeDetail.second != null) {
-        edgeClass = IGraphExpr.GraphExprKind.PATH_PATTERN;
+        patternType = EdgeDescriptor.PatternType.PATH;
         hopCountMin = edgeDetail.second.first;
         hopCountMax = edgeDetail.second.second;
       }
     }
 
-    return new EdgeDescriptor(edgeType, edgeClass, labels, edgeVariable, hopCountMin, hopCountMax);
+    return new EdgeDescriptor(edgeDirection, patternType, labels, edgeVariable, hopCountMin, hopCountMax);
   }
 }
 

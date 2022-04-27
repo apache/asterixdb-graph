@@ -94,7 +94,7 @@ public class EdgeRecord implements IElementRecord {
             // Build the direction binding for the edge detail projection.
             List<FieldBinding> edgeDetailBindings = new ArrayList<>();
             LiteralExpr directionFieldValue =
-                    new LiteralExpr(new StringLiteral(edgeDescriptor.getEdgeType().toString().toUpperCase()));
+                    new LiteralExpr(new StringLiteral(edgeDescriptor.getEdgeDirection().toString().toUpperCase()));
             LiteralExpr directionFieldName = new LiteralExpr(new StringLiteral(DIRECTION_FIELD_NAME));
             edgeDetailBindings.add(new FieldBinding(directionFieldName, directionFieldValue));
 

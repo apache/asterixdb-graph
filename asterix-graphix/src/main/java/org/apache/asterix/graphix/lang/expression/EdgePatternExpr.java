@@ -34,7 +34,7 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  * edge labels, an optional edge variable, and the hop range), an list of optional internal {@link VertexPatternExpr}
  * instances, a left {@link VertexPatternExpr}, and a right {@link VertexPatternExpr}.
  */
-public class EdgePatternExpr extends AbstractExpression implements IGraphExpr {
+public class EdgePatternExpr extends AbstractExpression {
     private final List<VertexPatternExpr> internalVertices;
     private final VertexPatternExpr leftVertex;
     private final VertexPatternExpr rightVertex;
@@ -46,7 +46,7 @@ public class EdgePatternExpr extends AbstractExpression implements IGraphExpr {
         this.edgeDescriptor = Objects.requireNonNull(edgeDescriptor);
         this.internalVertices = new ArrayList<>();
 
-        if (edgeDescriptor.getEdgeClass() == GraphExprKind.PATH_PATTERN) {
+        if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.PATH) {
             // If we have a sub-path, we have an internal vertex that we need to manage.
             for (int i = 0; i < edgeDescriptor.getMaximumHops() - 1; i++) {
                 this.internalVertices.add(new VertexPatternExpr(null, new HashSet<>()));
@@ -83,11 +83,6 @@ public class EdgePatternExpr extends AbstractExpression implements IGraphExpr {
     @Override
     public Kind getKind() {
         return null;
-    }
-
-    @Override
-    public GraphExprKind getGraphExprKind() {
-        return edgeDescriptor.getEdgeClass();
     }
 
     @Override

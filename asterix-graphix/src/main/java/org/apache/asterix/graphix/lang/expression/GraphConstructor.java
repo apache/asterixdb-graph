@@ -34,7 +34,7 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  * An expression which describes the schema of a graph, containing a list of vertices ({@link VertexConstructor}) and
  * a list of edges ({@link EdgeConstructor}) that connect the aforementioned vertices.
  */
-public class GraphConstructor extends AbstractExpression implements IGraphExpr {
+public class GraphConstructor extends AbstractExpression {
     private final List<VertexConstructor> vertexConstructors;
     private final List<EdgeConstructor> edgeConstructors;
 
@@ -62,11 +62,6 @@ public class GraphConstructor extends AbstractExpression implements IGraphExpr {
     @Override
     public Kind getKind() {
         return null;
-    }
-
-    @Override
-    public GraphExprKind getGraphExprKind() {
-        return GraphExprKind.GRAPH_CONSTRUCTOR;
     }
 
     @Override

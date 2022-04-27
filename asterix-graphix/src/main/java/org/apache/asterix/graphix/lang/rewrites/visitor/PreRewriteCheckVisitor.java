@@ -32,7 +32,6 @@ import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
@@ -221,7 +220,7 @@ public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
             }
             environmentMap.get(arg).edgeVariables.add(edgeIdentifier);
         }
-        if (edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.PATH_PATTERN) {
+        if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.PATH) {
             Integer minimumHops = edgeDescriptor.getMinimumHops();
             Integer maximumHops = edgeDescriptor.getMaximumHops();
             if (maximumHops == 0 || (minimumHops != null && minimumHops == 0)) {

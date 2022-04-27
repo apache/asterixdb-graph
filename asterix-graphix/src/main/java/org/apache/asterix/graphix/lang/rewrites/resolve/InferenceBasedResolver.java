@@ -25,7 +25,6 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.visitor.LabelConsistencyVisitor;
@@ -69,7 +68,7 @@ public class InferenceBasedResolver implements IGraphElementResolver {
 
     private boolean resolveEdge(EdgePatternExpr edgePatternExpr) {
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-        if (edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.PATH_PATTERN) {
+        if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.PATH) {
             VertexPatternExpr workingLeftVertex = edgePatternExpr.getLeftVertex();
 
             // We have a sub-path. Recurse with the edges of this sub-path.
@@ -86,8 +85,8 @@ public class InferenceBasedResolver implements IGraphElementResolver {
                 }
 
                 // Build our EDGE-PATTERN-EXPR and recurse.
-                EdgeDescriptor newDescriptor = new EdgeDescriptor(edgeDescriptor.getEdgeType(),
-                        IGraphExpr.GraphExprKind.EDGE_PATTERN, edgeDescriptor.getEdgeLabels(), null, null, null);
+                EdgeDescriptor newDescriptor = new EdgeDescriptor(edgeDescriptor.getEdgeDirection(),
+                        EdgeDescriptor.PatternType.EDGE, edgeDescriptor.getEdgeLabels(), null, null, null);
                 intermediateResult &= resolveEdge(new EdgePatternExpr(workingLeftVertex, rightVertex, newDescriptor));
 
                 // Update the labels of our edge and our internal vertex.
@@ -104,35 +103,35 @@ public class InferenceBasedResolver implements IGraphElementResolver {
             return intermediateResult;
         }
 
-        if (edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.UNDIRECTED) {
+        if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED) {
             // We have an undirected edge. Recurse with a LEFT_TO_RIGHT edge...
-            edgeDescriptor.setEdgeType(EdgeDescriptor.EdgeType.LEFT_TO_RIGHT);
+            edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT);
             boolean isLeftToRightModified = !resolveEdge(edgePatternExpr);
 
             // ...and a RIGHT_TO_LEFT edge.
-            edgeDescriptor.setEdgeType(EdgeDescriptor.EdgeType.RIGHT_TO_LEFT);
+            edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT);
             boolean isRightToLeftModified = !resolveEdge(edgePatternExpr);
 
             // Determine the direction of our edge, if possible.
             if (isLeftToRightModified && !isRightToLeftModified) {
-                edgeDescriptor.setEdgeType(EdgeDescriptor.EdgeType.LEFT_TO_RIGHT);
+                edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT);
 
             } else if (!isLeftToRightModified && isRightToLeftModified) {
-                edgeDescriptor.setEdgeType(EdgeDescriptor.EdgeType.RIGHT_TO_LEFT);
+                edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT);
 
             } else {
-                edgeDescriptor.setEdgeType(EdgeDescriptor.EdgeType.UNDIRECTED);
+                edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.UNDIRECTED);
             }
             return !(isLeftToRightModified || isRightToLeftModified);
         }
 
         // We have a _directed_ *edge*. Determine our source and destination vertex.
         VertexPatternExpr sourceVertexPattern, destinationVertexPattern;
-        if (edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.LEFT_TO_RIGHT) {
+        if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT) {
             sourceVertexPattern = edgePatternExpr.getLeftVertex();
             destinationVertexPattern = edgePatternExpr.getRightVertex();
 
-        } else { // edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.RIGHT_TO_LEFT
+        } else { // edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT
             sourceVertexPattern = edgePatternExpr.getRightVertex();
             destinationVertexPattern = edgePatternExpr.getLeftVertex();
         }

@@ -25,13 +25,12 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 
 /**
- * Given a sub-path that is {@link EdgeDescriptor.EdgeType#UNDIRECTED} but is fixed in the number of hops (denoted N),
+ * Given a sub-path that is {@link EdgeDescriptor.EdgeDirection#UNDIRECTED} but is fixed in the number of hops (denoted N),
  * we generate N sets of directed simple edges (the total of which is equal to 2^N).
  */
 public class UndirectedFixedPathExpansion implements IEdgePatternExpansion {
@@ -45,8 +44,8 @@ public class UndirectedFixedPathExpansion implements IEdgePatternExpansion {
     public Iterable<Iterable<EdgePatternExpr>> expand(EdgePatternExpr edgePatternExpr) {
         // Ensure we have been given the correct type of sub-path.
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-        if (edgeDescriptor.getEdgeClass() != IGraphExpr.GraphExprKind.PATH_PATTERN
-                || edgeDescriptor.getEdgeType() != EdgeDescriptor.EdgeType.UNDIRECTED
+        if (edgeDescriptor.getPatternType() != EdgeDescriptor.PatternType.PATH
+                || edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.UNDIRECTED
                 || !Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
             throw new IllegalArgumentException("Expected an undirected fixed sub-path, but given a " + edgeDescriptor);
         }
@@ -76,7 +75,7 @@ public class UndirectedFixedPathExpansion implements IEdgePatternExpansion {
 
                 // ...and generate two new variants that have an additional LEFT_TO_RIGHT edge...
                 EdgeDescriptor leftToRightEdgeDescriptor =
-                        new EdgeDescriptor(EdgeDescriptor.EdgeType.LEFT_TO_RIGHT, IGraphExpr.GraphExprKind.EDGE_PATTERN,
+                        new EdgeDescriptor(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT, EdgeDescriptor.PatternType.EDGE,
                                 edgePatternExpr.getEdgeDescriptor().getEdgeLabels(), graphEdgeVar, null, null);
                 List<EdgePatternExpr> leftToRightList = new ArrayList<>(workingEdgePatternList);
                 leftToRightList.add(new EdgePatternExpr(workingLeftVertex, rightVertex, leftToRightEdgeDescriptor));
@@ -84,7 +83,7 @@ public class UndirectedFixedPathExpansion implements IEdgePatternExpansion {
 
                 // ...and a RIGHT_TO_LEFT edge.
                 EdgeDescriptor rightToLeftEdgeDescriptor =
-                        new EdgeDescriptor(EdgeDescriptor.EdgeType.RIGHT_TO_LEFT, IGraphExpr.GraphExprKind.EDGE_PATTERN,
+                        new EdgeDescriptor(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT, EdgeDescriptor.PatternType.EDGE,
                                 edgePatternExpr.getEdgeDescriptor().getEdgeLabels(), graphEdgeVar, null, null);
                 List<EdgePatternExpr> rightToLeftList = new ArrayList<>(workingEdgePatternList);
                 rightToLeftList.add(new EdgePatternExpr(workingLeftVertex, rightVertex, rightToLeftEdgeDescriptor));

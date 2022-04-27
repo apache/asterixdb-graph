@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.assembly.IExprAssembly;
 import org.apache.asterix.graphix.lang.rewrites.lower.LowerSupplierNode;
@@ -68,7 +67,7 @@ public class NamedPathLowerAssembly implements IExprAssembly<LowerSupplierNode> 
 
                 for (EdgePatternExpr edgePatternExpr : pathPatternExpr.getEdgeExpressions()) {
                     EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-                    if (edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.EDGE_PATTERN) {
+                    if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.EDGE) {
                         // "Raw" edges are first put into a list of path records.
                         VariableExpr leftVertexVar = edgePatternExpr.getLeftVertex().getVariableExpr();
                         VariableExpr rightVertexVar = edgePatternExpr.getRightVertex().getVariableExpr();
@@ -85,7 +84,7 @@ public class NamedPathLowerAssembly implements IExprAssembly<LowerSupplierNode> 
                         Expression edgeExpr = qualifiedProjectionMap.get(edgeVarName);
                         workingSimplePath.add(new PathRecord(leftExpr, edgeExpr, rightExpr).getExpression());
 
-                    } else { // edgeDescriptor.getEdgeClass() == IGraphExpr.GraphExprKind.PATH_PATTERN
+                    } else { // edgeDescriptor.getEdgeClass() == EdgeDescriptor.PatternType.PATH
                         // If we encounter a sub-path, ARRAY_CONCAT our existing path and sub-path.
                         pathExpressionParts.add(new ListConstructor(ORDERED_LIST_CONSTRUCTOR, workingSimplePath));
                         VariableExpr subPathVar = edgeDescriptor.getVariableExpr();

@@ -33,12 +33,12 @@ import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.graphix.algebra.compiler.provider.GraphixCompilationProvider;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.assembly.IExprAssembly;
 import org.apache.asterix.graphix.lang.rewrites.common.EdgeDependencyGraph;
 import org.apache.asterix.graphix.lang.rewrites.lower.LowerSupplierNode;
 import org.apache.asterix.graphix.lang.rewrites.visitor.ElementResolutionVisitor;
+import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.clause.WhereClause;
@@ -200,7 +200,7 @@ public class IsomorphismLowerAssembly implements IExprAssembly<LowerSupplierNode
             qualifiedExprMap.put(rightVertexVar, qualifiedProjectionMap.get(rightVarName));
 
             // If we have an edge (and not a sub-path), create a conjunct for this.
-            if (e.getEdgeDescriptor().getEdgeClass() == IGraphExpr.GraphExprKind.EDGE_PATTERN) {
+            if (e.getEdgeDescriptor().getPatternType() == EdgeDescriptor.PatternType.EDGE) {
                 VariableExpr edgeVar = e.getEdgeDescriptor().getVariableExpr();
                 populateVariableMap(e.getEdgeDescriptor().getEdgeLabels(), edgeVar, edgeVariableMap);
                 String edgeVarName = SqlppVariableUtil.toUserDefinedName(edgeVar.getVar().getValue());

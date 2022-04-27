@@ -38,10 +38,6 @@ public class GraphixFunctionIdentifiers {
         return functionIdentifierMap.getOrDefault(functionName, null);
     }
 
-    // Function to be used when we normalize a graph-element body.
-    public static final FunctionIdentifier GRAPH_ELEMENT_BODY =
-            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "graph-element-body", 5);
-
     // Functions that can be called on vertices and edges.
     public static final FunctionIdentifier ELEMENT_LABEL =
             new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "element-label", 1);

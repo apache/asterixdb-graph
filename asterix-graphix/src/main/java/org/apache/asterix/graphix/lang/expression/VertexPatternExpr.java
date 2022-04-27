@@ -35,7 +35,7 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  * A query vertex (not to be confused with a vertex constructor) is composed of a set of labels (which may be empty)
  * and a variable (which may initially be null).
  */
-public class VertexPatternExpr extends AbstractExpression implements IGraphExpr {
+public class VertexPatternExpr extends AbstractExpression {
     private final Set<ElementLabel> labels;
     private VariableExpr variableExpr;
 
@@ -72,11 +72,6 @@ public class VertexPatternExpr extends AbstractExpression implements IGraphExpr 
     @Override
     public Kind getKind() {
         return null;
-    }
-
-    @Override
-    public GraphExprKind getGraphExprKind() {
-        return GraphExprKind.VERTEX_PATTERN;
     }
 
     @Override

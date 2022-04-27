@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
-import org.apache.asterix.graphix.lang.expression.IGraphExpr;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 
 /**
@@ -44,8 +43,8 @@ public class DirectedVarPathExpansion implements IEdgePatternExpansion {
     public Iterable<Iterable<EdgePatternExpr>> expand(EdgePatternExpr edgePatternExpr) {
         // Ensure we have been given the correct type of sub-path.
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
-        if (edgeDescriptor.getEdgeClass() != IGraphExpr.GraphExprKind.PATH_PATTERN
-                || edgeDescriptor.getEdgeType() == EdgeDescriptor.EdgeType.UNDIRECTED
+        if (edgeDescriptor.getPatternType() != EdgeDescriptor.PatternType.PATH
+                || edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED
                 || Objects.equals(edgeDescriptor.getMinimumHops(), edgeDescriptor.getMaximumHops())) {
             throw new IllegalArgumentException("Expected a directed var sub-path, but given a " + edgeDescriptor);
         }
@@ -53,7 +52,7 @@ public class DirectedVarPathExpansion implements IEdgePatternExpansion {
         List<List<EdgePatternExpr>> decomposedEdgeList = new ArrayList<>();
         for (int i = edgeDescriptor.getMinimumHops(); i <= edgeDescriptor.getMaximumHops(); i++) {
             EdgeDescriptor fixedEdgeDescriptor =
-                    new EdgeDescriptor(edgeDescriptor.getEdgeType(), IGraphExpr.GraphExprKind.PATH_PATTERN,
+                    new EdgeDescriptor(edgeDescriptor.getEdgeDirection(), EdgeDescriptor.PatternType.PATH,
                             edgeDescriptor.getEdgeLabels(), edgeDescriptor.getVariableExpr(), i, i);
             EdgePatternExpr fixedEdgePattern = new EdgePatternExpr(edgePatternExpr.getLeftVertex(),
                     edgePatternExpr.getRightVertex(), fixedEdgeDescriptor);

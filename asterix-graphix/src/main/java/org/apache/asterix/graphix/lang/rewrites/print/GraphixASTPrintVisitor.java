@@ -193,7 +193,7 @@ public class GraphixASTPrintVisitor extends SqlppAstPrintVisitor implements IGra
     public Void visit(EdgePatternExpr edgePatternExpr, Integer step) throws CompilationException {
         out.print(skip(step));
         edgePatternExpr.getLeftVertex().accept(this, 0);
-        switch (edgePatternExpr.getEdgeDescriptor().getEdgeType()) {
+        switch (edgePatternExpr.getEdgeDescriptor().getEdgeDirection()) {
             case LEFT_TO_RIGHT:
             case UNDIRECTED:
                 out.print("-[");
@@ -219,7 +219,7 @@ public class GraphixASTPrintVisitor extends SqlppAstPrintVisitor implements IGra
         out.print(",");
         out.print(edgePatternExpr.getEdgeDescriptor().getMaximumHops().toString());
         out.print("}");
-        switch (edgePatternExpr.getEdgeDescriptor().getEdgeType()) {
+        switch (edgePatternExpr.getEdgeDescriptor().getEdgeDirection()) {
             case LEFT_TO_RIGHT:
                 out.print("]->");
                 break;
