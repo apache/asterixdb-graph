@@ -32,8 +32,9 @@ import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 import org.apache.asterix.lang.common.base.AbstractClause;
 import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
@@ -253,12 +254,17 @@ public class GraphixASTPrintVisitor extends SqlppAstPrintVisitor implements IGra
 
     // The following should not appear in queries (the former, pre-rewrite).
     @Override
+    public Void visit(DeclareGraphStatement declareGraphStatement, Integer arg) throws CompilationException {
+        return null;
+    }
+
+    @Override
     public Void visit(CreateGraphStatement createGraphStatement, Integer step) throws CompilationException {
         return null;
     }
 
     @Override
-    public Void visit(GraphElementDecl graphElementDecl, Integer step) throws CompilationException {
+    public Void visit(GraphElementDeclaration graphElementDeclaration, Integer step) throws CompilationException {
         return null;
     }
 

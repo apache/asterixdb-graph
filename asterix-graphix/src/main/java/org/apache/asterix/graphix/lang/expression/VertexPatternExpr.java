@@ -19,6 +19,7 @@
 package org.apache.asterix.graphix.lang.expression;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,23 @@ public class VertexPatternExpr extends AbstractExpression {
         return labels.stream()
                 .map(v -> new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.VERTEX, v))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(labels, variableExpr);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof VertexPatternExpr)) {
+            return false;
+        }
+        VertexPatternExpr that = (VertexPatternExpr) object;
+        return Objects.equals(this.labels, that.labels) && Objects.equals(this.variableExpr, that.variableExpr);
     }
 
     @Override

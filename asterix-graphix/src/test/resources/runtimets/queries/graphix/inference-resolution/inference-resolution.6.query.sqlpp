@@ -40,8 +40,7 @@ FROM GRAPH  VERTEX (:User)
                    AS ( FROM    Yelp.Reviews R
                         SELECT  R.review_id, R.user_id )
 MATCH       (u:User)-[e:{2,2}]->(n) // (u:User)-[]->()-[]->(n)
-UNNEST      e AS edgeRecord
-LET         ee = edgeRecord.`Edge`
+UNNEST      PATH_EDGES(e) AS ee
 SELECT      DISTINCT LABEL(ee) AS e_label,
                      LABEL(n) AS n_label,
-                     LEN(e) AS e_length;
+                     PATH_HOP_COUNT(e) AS e_length;

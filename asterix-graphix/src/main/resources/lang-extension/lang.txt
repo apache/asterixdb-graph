@@ -30,8 +30,9 @@ import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.optype.MatchType;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 import org.apache.asterix.lang.sqlpp.parser.ParseException;
@@ -39,10 +40,10 @@ import org.apache.asterix.lang.sqlpp.parser.SqlppParseException;
 import org.apache.asterix.lang.sqlpp.parser.Token;
 
 @new_at_the_class_def
-public GraphElementDecl parseGraphElementBody(GraphElementIdentifier identifier) throws CompilationException {
-    return parseImpl(new ParseFunction<GraphElementDecl>() {
+public GraphElementDeclaration parseGraphElementBody(GraphElementIdentifier identifier) throws CompilationException {
+    return parseImpl(new ParseFunction<GraphElementDeclaration>() {
         @Override
-        public GraphElementDecl parse() throws ParseException {
+        public GraphElementDeclaration parse() throws ParseException {
             DataverseName dataverse = defaultDataverse;
             defaultDataverse = identifier.getGraphIdentifier().getDataverseName();
 
@@ -52,7 +53,7 @@ public GraphElementDecl parseGraphElementBody(GraphElementIdentifier identifier)
             removeCurrentScope();
 
             defaultDataverse = dataverse;
-            return new GraphElementDecl(identifier, elementBodyExpr);
+            return new GraphElementDeclaration(identifier, elementBodyExpr);
         }
     });
 }
@@ -153,57 +154,135 @@ SelectBlock SelectBlock() throws ParseException:
   }
 }
 
-@merge
-Statement CreateStatement() throws ParseException:
+@override
+Statement SingleStatement() throws ParseException:
 {
-  // merge area 1
-  before:
-  after:
+  Statement stmt = null;
 }
 {
   (
-    // merge area 2
+    stmt = DataverseDeclaration()
+    | stmt = DeclareStatement()
+    | stmt = CreateStatement()
+    | stmt = LoadStatement()
+    | stmt = DropStatement()
+    | stmt = WriteStatement()
+    | stmt = SetStatement()
+    | stmt = InsertStatement()
+    | stmt = DeleteStatement()
+    | stmt = UpdateStatement()
+    | stmt = UpsertStatement()
+    | stmt = ConnectionStatement()
+    | stmt = CompactStatement()
+    | stmt = Query()
+    | stmt = RefreshExternalDatasetStatement()
+  )
+  {
+    return stmt;
+  }
+}
+
+@new
+Statement DeclareStatement() throws ParseException:
+{
+  Token startToken = null;
+  Statement stmt = null;
+}
+{
+  <DECLARE> { startToken = token; }
+  (
+    stmt = FunctionDecl(startToken)
+    | stmt = GraphDecl(startToken)
+  )
+  {
+    return stmt;
+  }
+}
+
+// Note: this is the same as FunctionDeclaration in the main grammar with the <DECLARE> token removed.
+@new
+FunctionDecl FunctionDecl(Token startToken) throws ParseException:
+{
+  String functionName;
+  Pair<Integer, List<Pair<VarIdentifier,TypeExpression>>> paramsWithArity = null;
+  Expression funcBody;
+  createNewScope();
+}
+{
+  <FUNCTION>
+  functionName = Identifier()
+  paramsWithArity = FunctionParameters()
+  <LEFTBRACE>
+  funcBody = FunctionBody()
+  <RIGHTBRACE>
+  {
+    int arity = paramsWithArity.first;
+    List<Pair<VarIdentifier,TypeExpression>> paramList = paramsWithArity.second;
+    FunctionSignature signature = new FunctionSignature(defaultDataverse, functionName, arity);
+    getCurrentScope().addFunctionDescriptor(signature, false);
+    ensureNoTypeDeclsInFunction(functionName, paramList, null, startToken);
+    List<VarIdentifier> params = new ArrayList<VarIdentifier>(paramList.size());
+    for (Pair<VarIdentifier,TypeExpression> p: paramList) {
+        params.add(p.getFirst());
+    }
+    FunctionDecl stmt = new FunctionDecl(signature, params, funcBody, false);
+    removeCurrentScope();
+    return addSourceLocation(stmt, startToken);
+  }
+}
+
+@merge
+Statement CreateStatement() throws ParseException:
+{
+}
+{
+  (
     before:
     after:    | stmt = CreateGraphStatement(startToken, false)
   )
   {
-    // merge area 3
   }
 }
 
 @merge
 Statement CreateOrReplaceStatement(Token startStmtToken) throws ParseException:
 {
-  // merge area 1
-  before:
-  after:
 }
 {
   (
-    // merge area 2
     before:
     after:    | stmt = CreateGraphStatement(startStmtToken, true)
   )
   {
-    // merge area 3
   }
 }
 
 @merge
 Statement DropStatement() throws ParseException:
 {
-  // merge area 1
-  before:
-  after:
 }
 {
   (
-    // merge area 2
     before:
     after:    | stmt = DropGraphStatement(startToken)
   )
   {
-    // merge area 3
+  }
+}
+
+@new
+DeclareGraphStatement GraphDecl(Token startStmtToken) throws ParseException:
+{
+  GraphConstructor graphConstructor = null;
+  String graphName = null;
+}
+{
+  <GRAPH>
+  graphName = Identifier()
+  <AS> graphConstructor = GraphConstructor(token)
+  {
+    DeclareGraphStatement stmt = new DeclareGraphStatement(graphName, graphConstructor);
+    return addSourceLocation(stmt, startStmtToken);
   }
 }
 

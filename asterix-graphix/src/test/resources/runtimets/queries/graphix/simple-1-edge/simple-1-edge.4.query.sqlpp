@@ -17,29 +17,24 @@
  * under the License.
  */
 
-// Two edge definitions, single vertex definition on both sides.
+// One edge definition, single vertex definition on both sides, with a dangling vertex.
 FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
                    AS Yelp.Users,
-            EDGE   (:User)-[:FRIENDS_WITH]->(:User)
-                   SOURCE KEY (user_id)
-                   DESTINATION KEY (friend)
-                   AS ( FROM    Yelp.Users U
-                        UNNEST  U.friends F
-                        SELECT  U.user_id AS user_id,
-                                F AS friend ),
-            EDGE   (:User)-[:FRIENDS_WITH]->(:User)
-                   SOURCE KEY (user_id)
-                   DESTINATION KEY (friend)
-                   AS ( FROM    Yelp.Friends F
-                        SELECT  F.user_id AS user_id,
-                                F.friend AS friend )
-MATCH       (u2:User)<-[fw:FRIENDS_WITH]-(u1:User)
-SELECT      u1.user_id AS u1_user_id,
-            u2.user_id AS u2_user_id,
-            fw.user_id AS fw_user_id,
-            fw.friend AS fw_friend
-ORDER BY    u1_user_id,
-            u2_user_id,
-            fw_user_id,
-            fw_friend;
+            VERTEX (:Review)
+                   PRIMARY KEY (review_id)
+                   AS Yelp.Reviews,
+            EDGE   (:Review)-[:MADE_BY]->(:User)
+                   SOURCE KEY (review_id)
+                   DESTINATION KEY (review_user_id)
+                   AS ( FROM    Yelp.Reviews R
+                        SELECT  R.review_user_id, R.review_id )
+MATCH       (u:User)<-[:MADE_BY]-(r:Review), (n)
+SELECT      u.user_id AS u_user_id,
+            r.review_id AS r_review_id,
+            n.user_id AS n_user_id,
+            n.review_id AS n_review_id
+ORDER BY    u_user_id,
+            r_review_id,
+            n_user_id,
+            n_review_id;

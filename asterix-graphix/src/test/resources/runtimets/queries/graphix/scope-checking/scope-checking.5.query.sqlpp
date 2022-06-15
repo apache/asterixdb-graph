@@ -33,7 +33,9 @@ LET         shortestPath = ( FROM      g AS gi
                              SELECT    VALUE ( FROM    PATH_VERTICES(gi.p) pv
                                                SELECT  VALUE pv.user_id )
                              ORDER BY  PATH_HOP_COUNT(gi.p) ASC
-                             LIMIT     1 )
+                             LIMIT     1 )[0]
 SELECT      u1.user_id AS u1_user_id,
             u2.user_id AS u2_user_id,
-            shortestPath[0] AS shortestPath;
+            shortestPath
+ORDER BY    u1_user_id,
+            u2_user_id;

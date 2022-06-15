@@ -18,6 +18,9 @@
  */
 package org.apache.asterix.graphix.metadata.entity.schema;
 
+import static org.apache.asterix.graphix.common.metadata.GraphElementIdentifier.Kind.EDGE;
+import static org.apache.asterix.graphix.common.metadata.GraphElementIdentifier.Kind.VERTEX;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,34 +72,25 @@ public class Schema implements Serializable {
         }
 
         /**
-         * @return Null if the primary keys of an existing vertex conflict with the vertex to-be-added. The vertex
-         * to-be-added otherwise.
+         * @return Null if a vertex with the same label already exists. The vertex to-be-added otherwise.
          */
         public Vertex addVertex(ElementLabel vertexLabel, List<List<String>> primaryKeyFieldNames, String definition) {
             if (!vertexLabelMap.containsKey(vertexLabel)) {
-                GraphElementIdentifier identifier =
-                        new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.VERTEX, vertexLabel);
-                Vertex newVertex = new Vertex(identifier, new Vertex.Definition(primaryKeyFieldNames, definition));
+                GraphElementIdentifier identifier = new GraphElementIdentifier(graphIdentifier, VERTEX, vertexLabel);
+                Vertex newVertex = new Vertex(identifier, primaryKeyFieldNames, definition);
                 workingSchema.vertexList.add(newVertex);
                 vertexLabelMap.put(vertexLabel, newVertex);
                 return newVertex;
 
             } else {
-                Vertex existingVertex = vertexLabelMap.get(vertexLabel);
-                if (!existingVertex.getPrimaryKeyFieldNames().equals(primaryKeyFieldNames)) {
-                    lastError = Error.CONFLICTING_PRIMARY_KEY;
-                    return null;
-                }
-                existingVertex.getDefinitions().add(new Vertex.Definition(primaryKeyFieldNames, definition));
-                return existingVertex;
+                lastError = Error.VERTEX_LABEL_CONFLICT;
+                return null;
             }
         }
 
         /**
-         * @return Null if there exists no vertex with the given source label or destination label, OR if the
-         * source vertex / destination vertex of an existing edge conflict with the edge to-be-added, OR if the source
-         * key / destination key of an existing edge conflict with the edge to-be-added. Otherwise, the edge
-         * to-be-added.
+         * @return Null if there exists no vertex with the given source label or destination label, OR if an edge with
+         * the same label already exists. The edge to-be-added otherwise.
          */
         public Edge addEdge(ElementLabel edgeLabel, ElementLabel destinationLabel, ElementLabel sourceLabel,
                 List<List<String>> destinationKeyFieldNames, List<List<String>> sourceKeyFieldNames,
@@ -108,37 +102,16 @@ public class Schema implements Serializable {
             } else if (!vertexLabelMap.containsKey(destinationLabel)) {
                 lastError = Error.DESTINATION_VERTEX_NOT_FOUND;
                 return null;
-            }
 
-            if (edgeLabelMap.containsKey(edgeLabel)) {
-                for (Edge existingEdge : edgeLabelMap.get(edgeLabel)) {
-                    ElementLabel existingSourceLabel = existingEdge.getSourceLabel();
-                    ElementLabel existingDestLabel = existingEdge.getDestinationLabel();
-                    if (existingSourceLabel.equals(sourceLabel) && existingDestLabel.equals(destinationLabel)) {
-                        Edge.Definition existingDefinition = existingEdge.getDefinitions().get(0);
-                        if (!existingDefinition.getSourceKeyFieldNames().equals(sourceKeyFieldNames)) {
-                            lastError = Error.CONFLICTING_SOURCE_KEY;
-                            return null;
-
-                        } else if (!existingDefinition.getDestinationKeyFieldNames().equals(destinationKeyFieldNames)) {
-                            lastError = Error.CONFLICTING_DESTINATION_KEY;
-                            return null;
-
-                        } else {
-                            Edge.Definition newEdgeDefinition =
-                                    new Edge.Definition(destinationKeyFieldNames, sourceKeyFieldNames, definitionBody);
-                            existingEdge.getDefinitions().add(newEdgeDefinition);
-                            return existingEdge;
-                        }
-                    }
-                }
+            } else if (edgeLabelMap.containsKey(edgeLabel)) {
+                lastError = Error.EDGE_LABEL_CONFLICT;
+                return null;
             }
 
             // Update our schema.
-            GraphElementIdentifier identifier =
-                    new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.EDGE, edgeLabel);
-            Edge newEdge = new Edge(identifier, vertexLabelMap.get(destinationLabel), vertexLabelMap.get(sourceLabel),
-                    new Edge.Definition(destinationKeyFieldNames, sourceKeyFieldNames, definitionBody));
+            GraphElementIdentifier identifier = new GraphElementIdentifier(graphIdentifier, EDGE, edgeLabel);
+            Edge newEdge = new Edge(identifier, sourceLabel, destinationLabel, sourceKeyFieldNames,
+                    destinationKeyFieldNames, definitionBody);
             workingSchema.edgeList.add(newEdge);
 
             // Update our edge label map.
@@ -158,11 +131,8 @@ public class Schema implements Serializable {
 
         public enum Error {
             NO_ERROR,
-
-            CONFLICTING_PRIMARY_KEY,
-            CONFLICTING_SOURCE_KEY,
-            CONFLICTING_DESTINATION_KEY,
-
+            VERTEX_LABEL_CONFLICT,
+            EDGE_LABEL_CONFLICT,
             SOURCE_VERTEX_NOT_FOUND,
             DESTINATION_VERTEX_NOT_FOUND
         }

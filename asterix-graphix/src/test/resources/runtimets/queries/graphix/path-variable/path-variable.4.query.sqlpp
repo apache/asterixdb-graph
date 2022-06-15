@@ -30,10 +30,8 @@ FROM GRAPH  VERTEX (:User)
                    AS ( FROM    Yelp.Reviews R
                         SELECT  R.review_id, R.user_id )
 MATCH       (u:User)<-[:MADE_BY]-(r:Review) AS p
-UNNEST      p AS edgeRecord
-SELECT      PATH_HOP_COUNT(p) AS pathLength,
+UNNEST      p.Edges AS edgeRecord
+SELECT      LEN(p.Edges) AS pathLength,
             edgeRecord
 ORDER BY    u.user_id,
-            r.review_d,
-            VERTEX_KEY(edgeRecord.LeftVertex),
-            SOURCE_KEY(edgeRecord.`Edge`);
+            r.review_id;

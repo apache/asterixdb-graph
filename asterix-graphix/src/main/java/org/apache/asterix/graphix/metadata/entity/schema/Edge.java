@@ -18,10 +18,8 @@
  */
 package org.apache.asterix.graphix.metadata.entity.schema;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
@@ -29,27 +27,33 @@ import org.apache.asterix.graphix.lang.struct.ElementLabel;
 /**
  * Metadata representation of an edge. An edge consists of the following:
  * 1. A {@link GraphElementIdentifier}, to uniquely identify the edge across other graph elements.
- * 2. A source vertex ({@link Vertex}) reference.
- * 3. A destination vertex ({@link Vertex}) reference.
- * 4. A collection of edge definitions, which contains a source key, destination key, and a SQL++ string.
+ * 2. An {@link ElementLabel} instance associated with the source vertex.
+ * 3. An {@link ElementLabel} instance associated with the destination vertex.
+ * 4. A list of source key fields, associated with the definition body.
+ * 5. A list of destination key fields, associated with the definition body.
+ * 6. A SQL++ string denoting the definition body.
  */
-public class Edge implements Element {
+public class Edge implements IElement {
     private static final long serialVersionUID = 1L;
 
     private final GraphElementIdentifier identifier;
-    private final Vertex destinationVertex;
-    private final Vertex sourceVertex;
-    private final List<Definition> definitions;
+    private final ElementLabel sourceVertexLabel;
+    private final ElementLabel destinationVertexLabel;
+    private final List<List<String>> sourceKeyFieldNames;
+    private final List<List<String>> destinationKeyFieldNames;
+    private final String definitionBody;
 
     /**
      * Use {@link Schema.Builder} to build Edge instances instead of this constructor.
      */
-    Edge(GraphElementIdentifier identifier, Vertex destinationVertex, Vertex sourceVertex, Definition edgeDefinition) {
-        this.destinationVertex = Objects.requireNonNull(destinationVertex);
-        this.sourceVertex = Objects.requireNonNull(sourceVertex);
+    Edge(GraphElementIdentifier identifier, ElementLabel sourceVertexLabel, ElementLabel destinationVertexLabel,
+            List<List<String>> sourceKeyFieldNames, List<List<String>> destKeyFieldNames, String definitionBody) {
         this.identifier = Objects.requireNonNull(identifier);
-        this.definitions = new ArrayList<>();
-        this.definitions.add(Objects.requireNonNull(edgeDefinition));
+        this.sourceVertexLabel = Objects.requireNonNull(sourceVertexLabel);
+        this.destinationVertexLabel = Objects.requireNonNull(destinationVertexLabel);
+        this.sourceKeyFieldNames = Objects.requireNonNull(sourceKeyFieldNames);
+        this.destinationKeyFieldNames = Objects.requireNonNull(destKeyFieldNames);
+        this.definitionBody = Objects.requireNonNull(definitionBody);
     }
 
     public static class Definition {
@@ -78,23 +82,19 @@ public class Edge implements Element {
     }
 
     public ElementLabel getDestinationLabel() {
-        return destinationVertex.getLabel();
+        return destinationVertexLabel;
     }
 
     public ElementLabel getSourceLabel() {
-        return sourceVertex.getLabel();
+        return sourceVertexLabel;
     }
 
-    public Vertex getDestinationVertex() {
-        return destinationVertex;
+    public List<List<String>> getSourceKeyFieldNames() {
+        return sourceKeyFieldNames;
     }
 
-    public Vertex getSourceVertex() {
-        return sourceVertex;
-    }
-
-    public List<Definition> getDefinitions() {
-        return definitions;
+    public List<List<String>> getDestinationKeyFieldNames() {
+        return destinationKeyFieldNames;
     }
 
     @Override
@@ -108,8 +108,8 @@ public class Edge implements Element {
     }
 
     @Override
-    public List<String> getDefinitionBodies() {
-        return definitions.stream().map(Definition::getDefinition).collect(Collectors.toList());
+    public String getDefinitionBody() {
+        return definitionBody;
     }
 
     @Override
@@ -118,6 +118,6 @@ public class Edge implements Element {
         String sourceNodePattern = "(:" + getSourceLabel() + ")";
         String destinationNodePattern = "(:" + getDestinationLabel() + ")";
         String edgePattern = sourceNodePattern + "-" + edgeBodyPattern + "->" + destinationNodePattern;
-        return edgePattern + " AS " + String.join(",\n", getDefinitionBodies());
+        return edgePattern + " AS " + definitionBody;
     }
 }

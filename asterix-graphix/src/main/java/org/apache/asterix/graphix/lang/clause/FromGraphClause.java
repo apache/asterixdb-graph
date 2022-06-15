@@ -107,7 +107,8 @@ public class FromGraphClause extends AbstractClause {
 
     @Override
     public String toString() {
-        return (graphConstructor == null) ? dataverse.toString() + "." + name : graphConstructor.toString();
+        return (graphConstructor != null) ? graphConstructor.toString()
+                : ((dataverse == null) ? name.getValue() : (dataverse + "." + name));
     }
 
     @Override

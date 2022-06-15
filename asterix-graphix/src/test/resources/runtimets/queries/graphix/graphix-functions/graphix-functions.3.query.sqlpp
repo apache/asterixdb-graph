@@ -17,22 +17,14 @@
  * under the License.
  */
 
-// Test each simple vertex function (label, key, properties, and detail).
+// Test each simple vertex function (label and detail).
 FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
                    AS Yelp.Users,
             VERTEX (:Review)
                    PRIMARY KEY (review_id)
-                   AS Yelp.Reviews,
-            EDGE   (:User)<-[:MADE_BY]-(:Review)
-                   SOURCE KEY (review_id)
-                   DESTINATION KEY (user_id)
-                   AS ( FROM    Yelp.Reviews R
-                        SELECT  R.review_id,
-                                R.user_id )
+                   AS Yelp.Reviews
 MATCH       (n)
-SELECT      VERTEX_KEY(n) AS vertexKey,
-            LABEL(n) AS vertexLabel,
-            VERTEX_PROPERTIES(n) AS vertexProperties,
+SELECT      LABEL(n) AS vertexLabel,
             VERTEX_DETAIL(n) AS vertexDetail
 ORDER BY    n;

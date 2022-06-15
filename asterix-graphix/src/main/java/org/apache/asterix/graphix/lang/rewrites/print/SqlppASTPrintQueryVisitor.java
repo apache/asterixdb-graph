@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.asterix.common.exceptions.CompilationException;
+import org.apache.asterix.graphix.lang.clause.CorrLetClause;
+import org.apache.asterix.graphix.lang.clause.CorrWhereClause;
 import org.apache.asterix.lang.common.base.Clause;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
@@ -46,6 +48,7 @@ import org.apache.asterix.lang.common.expression.UnaryExpr;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 import org.apache.asterix.lang.common.statement.Query;
 import org.apache.asterix.lang.common.struct.OperatorType;
+import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
 import org.apache.asterix.lang.sqlpp.clause.FromClause;
 import org.apache.asterix.lang.sqlpp.clause.FromTerm;
 import org.apache.asterix.lang.sqlpp.clause.HavingClause;
@@ -69,12 +72,13 @@ import org.apache.hyracks.algebricks.common.exceptions.NotImplementedException;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 
 /**
- * Visitor class to create a valid SQL++ query out of a **valid** AST. We make the following assumptions:
+ * Visitor class to create a _valid_ SQL++ query out of a **valid** AST. The only exception to the validity of the
+ * printed SQL++ is the presence of {@link CorrLetClause} and {@link CorrWhereClause}, denoted using "WITH ..." before
+ * (or after) JOIN / UNNEST clauses. We make the following assumptions:
  * 1. The entry point is a {@link Query}, which we will print to.
  * 2. All {@link GroupbyClause} nodes only have one set of {@link GbyVariableExpressionPair} (i.e. the GROUP-BY
  * rewrites should have fired).
- * 3. No positional variables are included.
- * 4. No {@link WindowExpression} nodes are included (this is on the TODO list).
+ * 3. No {@link WindowExpression} nodes are included (this is on the TODO list).
  */
 public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisitor<String, Void> {
     private final PrintWriter printWriter;
@@ -85,6 +89,7 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
 
     @Override
     public String visit(Query query, Void arg) throws CompilationException {
+        // TODO (GLENN): We can avoid this regex altogether if we cleanup the spaces in the other dispatch methods.
         String queryBodyString = query.getBody().accept(this, arg) + ";";
         queryBodyString = queryBodyString.trim().replaceAll("\\s+", " ");
         printWriter.print(queryBodyString);
@@ -195,15 +200,22 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
 
     @Override
     public String visit(FromTerm fromTerm, Void arg) throws CompilationException {
-        // Note: we do not include positional variables here.
         StringBuilder sb = new StringBuilder();
         sb.append(fromTerm.getLeftExpression().accept(this, arg));
         if (fromTerm.getLeftVariable() != null) {
             sb.append(" AS ");
             sb.append(fromTerm.getLeftVariable().accept(this, arg));
         }
-        sb.append(fromTerm.getCorrelateClauses().stream().map(this::visitAndSwallowException)
-                .collect(Collectors.joining()));
+        if (fromTerm.hasPositionalVariable()) {
+            sb.append(" AT ");
+            sb.append(fromTerm.getPositionalVariable().accept(this, arg));
+        }
+        for (AbstractBinaryCorrelateClause correlateClause : fromTerm.getCorrelateClauses()) {
+            if (correlateClause instanceof CorrLetClause || correlateClause instanceof CorrWhereClause) {
+                sb.append(" WITH ");
+            }
+            sb.append(correlateClause.accept(this, arg));
+        }
         return sb.toString();
     }
 
@@ -216,15 +228,11 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
     public String visit(GroupbyClause groupbyClause, Void arg) throws CompilationException {
         StringBuilder sb = new StringBuilder();
         sb.append(" GROUP BY "); // Note: we should have rewritten grouping sets by now.
-        sb.append(groupbyClause.getGbyPairList().stream().flatMap(Collection::stream).map(p -> {
-            if (p.getVar() != null) {
-                return " ( " + visitAndSwallowException(p.getExpr()) + " AS " + visitAndSwallowException(p.getVar())
-                        + ")";
-
-            } else {
-                return " ( " + visitAndSwallowException(p.getExpr()) + " ) ";
-            }
-        }).collect(Collectors.joining(", ")));
+        sb.append(groupbyClause.getGbyPairList().stream().flatMap(Collection::stream)
+                .map(p -> (p.getVar() != null) ? (" ( " + visitAndSwallowException(p.getExpr()) + " AS "
+                        + visitAndSwallowException(p.getVar()) + ")")
+                        : (" ( " + visitAndSwallowException(p.getExpr()) + " ) "))
+                .collect(Collectors.joining(", ")));
         if (groupbyClause.hasGroupVar()) {
             sb.append(" GROUP AS ");
             sb.append(groupbyClause.getGroupVar().accept(this, arg));
@@ -291,7 +299,6 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
 
     @Override
     public String visit(JoinClause joinClause, Void arg) throws CompilationException {
-        // Note: we do not include positional variables here.
         StringBuilder sb = new StringBuilder();
         switch (joinClause.getJoinType()) {
             case INNER:
@@ -309,6 +316,10 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
             sb.append(" AS ");
             sb.append(joinClause.getRightVariable().accept(this, arg));
         }
+        if (joinClause.hasPositionalVariable()) {
+            sb.append(" AT ");
+            sb.append(joinClause.getPositionalVariable().accept(this, arg));
+        }
         sb.append(" ON ");
         sb.append(joinClause.getConditionExpression().accept(this, arg));
         return sb.toString();
@@ -321,7 +332,6 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
 
     @Override
     public String visit(UnnestClause unnestClause, Void arg) throws CompilationException {
-        // Note: we do not include positional variables here.
         StringBuilder sb = new StringBuilder();
         switch (unnestClause.getUnnestType()) {
             case INNER:
@@ -335,6 +345,10 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
         if (unnestClause.getRightVariable() != null) {
             sb.append(" AS ");
             sb.append(unnestClause.getRightVariable().accept(this, arg));
+        }
+        if (unnestClause.hasPositionalVariable()) {
+            sb.append(" AT ");
+            sb.append(unnestClause.getPositionalVariable().accept(this, arg));
         }
         return sb.toString();
     }
@@ -587,6 +601,7 @@ public class SqlppASTPrintQueryVisitor extends AbstractSqlppQueryExpressionVisit
             switch (unaryExpr.getExprType()) {
                 case POSITIVE:
                     sb.append("+");
+                    break;
                 case NEGATIVE:
                     sb.append("-");
                     break;

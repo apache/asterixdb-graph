@@ -18,20 +18,24 @@
  */
 package org.apache.asterix.graphix.lang.expression;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractExpression;
+import org.apache.asterix.lang.common.clause.LetClause;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
  * A path is composed of a list of {@link VertexPatternExpr} instances and a list of {@link EdgePatternExpr} that
- * utilize the aforementioned vertices. Users can also optionally specify a variable.
+ * utilize the aforementioned vertices. Users can also optionally specify a variable, and attach {@link LetClause} nodes
+ * to aid in lowering this expression (i.e. for lowering sub-paths).
  */
 public class PathPatternExpr extends AbstractExpression {
+    private final List<LetClause> reboundSubPathExpressions;
     private final List<VertexPatternExpr> vertexExpressions;
     private final List<EdgePatternExpr> edgeExpressions;
     private VariableExpr variableExpr;
@@ -41,6 +45,9 @@ public class PathPatternExpr extends AbstractExpression {
         this.vertexExpressions = Objects.requireNonNull(vertexExpressions);
         this.edgeExpressions = Objects.requireNonNull(edgeExpressions);
         this.variableExpr = variableExpr;
+
+        // We will build this list on canonicalization.
+        this.reboundSubPathExpressions = new ArrayList<>();
     }
 
     public List<VertexPatternExpr> getVertexExpressions() {
@@ -53,6 +60,10 @@ public class PathPatternExpr extends AbstractExpression {
 
     public VariableExpr getVariableExpr() {
         return variableExpr;
+    }
+
+    public List<LetClause> getReboundSubPathList() {
+        return reboundSubPathExpressions;
     }
 
     public void setVariableExpr(VariableExpr variableExpr) {

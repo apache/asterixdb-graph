@@ -35,8 +35,9 @@ import org.apache.asterix.compiler.provider.ILangCompilationProvider;
 import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
 import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
 import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.lang.util.GraphStatementHandlingUtil;
 import org.apache.asterix.graphix.metadata.entity.dependency.DependencyIdentifier;
 import org.apache.asterix.graphix.metadata.entity.dependency.FunctionRequirements;
@@ -50,8 +51,10 @@ import org.apache.asterix.lang.common.statement.CreateFunctionStatement;
 import org.apache.asterix.lang.common.statement.CreateViewStatement;
 import org.apache.asterix.lang.common.statement.DataverseDropStatement;
 import org.apache.asterix.lang.common.statement.DropDatasetStatement;
+import org.apache.asterix.lang.common.statement.FunctionDecl;
 import org.apache.asterix.lang.common.statement.FunctionDropStatement;
 import org.apache.asterix.lang.common.statement.SynonymDropStatement;
+import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.statement.ViewDropStatement;
 import org.apache.asterix.metadata.MetadataManager;
 import org.apache.asterix.metadata.MetadataTransactionContext;
@@ -59,8 +62,11 @@ import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.translator.IRequestParameters;
 import org.apache.asterix.translator.SessionOutput;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
+import org.apache.hyracks.api.exceptions.IWarningCollector;
 
 public class GraphixQueryTranslator extends QueryTranslator {
+    Set<DeclareGraphStatement> declareGraphStatements = new HashSet<>();
+
     public GraphixQueryTranslator(ICcApplicationContext appCtx, List<Statement> statements, SessionOutput output,
             ILangCompilationProvider compilationProvider, ExecutorService executorService,
             IResponsePrinter responsePrinter) {
@@ -71,12 +77,23 @@ public class GraphixQueryTranslator extends QueryTranslator {
         return (GraphixQueryRewriter) rewriterFactory.createQueryRewriter();
     }
 
-    public void setGraphElementNormalizedBody(MetadataProvider metadataProvider, GraphElementDecl graphElementDecl,
-            GraphixQueryRewriter queryRewriter) throws CompilationException {
-        LangRewritingContext langRewritingContext =
-                new LangRewritingContext(metadataProvider, declaredFunctions, null, warningCollector, 0);
-        GraphixRewritingContext graphixRewritingContext = new GraphixRewritingContext(langRewritingContext);
-        queryRewriter.loadNormalizedGraphElement(graphixRewritingContext, graphElementDecl);
+    public void addDeclaredGraph(DeclareGraphStatement declareGraphStatement) {
+        declareGraphStatements.add(declareGraphStatement);
+    }
+
+    public void setGraphElementNormalizedBody(MetadataProvider metadataProvider,
+            GraphElementDeclaration graphElementDeclaration, GraphixQueryRewriter queryRewriter)
+            throws CompilationException {
+        queryRewriter.loadNormalizedGraphElement((GraphixRewritingContext) createLangRewritingContext(metadataProvider,
+                declaredFunctions, null, warningCollector, 0), graphElementDeclaration);
+    }
+
+    @Override
+    protected LangRewritingContext createLangRewritingContext(MetadataProvider metadataProvider,
+            List<FunctionDecl> declaredFunctions, List<ViewDecl> declaredViews, IWarningCollector warningCollector,
+            int varCounter) {
+        return new GraphixRewritingContext(metadataProvider, declaredFunctions, declaredViews, declareGraphStatements,
+                warningCollector, varCounter);
     }
 
     /**

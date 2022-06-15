@@ -31,7 +31,7 @@
         <expected-error>Cannot drop dataverse: DATASET TestDataverse2.GenericDataset being used by GRAPH TestDataverse.TestGraph</expected-error>
         <expected-error>Bad definition for a graph element(.)*Cannot find dataset DatasetThatDoesNotExist in dataverse TestDataverse nor an alias with name DatasetThatDoesNotExist</expected-error>
         <expected-error>Bad definition for a graph element(.)*Cannot resolve ambiguous alias reference for identifier V</expected-error>
-        <expected-error>Conflicting primary keys for vertices with label Vertex1</expected-error>
+        <expected-error>Conflicting vertex label found: Vertex1</expected-error>
         <expected-error>Destination vertex Vertex3 not found in the edge EDGE_1</expected-error>
         <expected-error>Graph TestGraph already exists</expected-error>
         <expected-error>Graph GraphThatDoesntExist2 does not exist</expected-error>
@@ -42,9 +42,10 @@
     </test-case>
   </test-group>
   <test-group name="dangling-vertices">
-    <test-case FilePath="graphix">
+    <test-case FilePath="graphix" check-warnings="true">
       <compilation-unit name="dangling-vertices">
         <output-dir compare="Text">dangling-vertices</output-dir>
+        <expected-warn>Potential disconnected pattern encountered! A CROSS-JOIN has been introduced.</expected-warn>
       </compilation-unit>
     </test-case>
   </test-group>
@@ -70,7 +71,7 @@
     </test-case>
   </test-group>
   <test-group name="inference-resolution">
-    <test-case FilePath="graphix">
+    <test-case FilePath="graphix" check-warnings="true">
       <compilation-unit name="inference-resolution">
         <output-dir compare="Text">inference-resolution</output-dir>
       </compilation-unit>
@@ -80,16 +81,6 @@
     <test-case FilePath="graphix">
       <compilation-unit name="left-match">
         <output-dir compare="Text">left-match</output-dir>
-      </compilation-unit>
-    </test-case>
-  </test-group>
-  <test-group name="minimal-resolution">
-    <test-case FilePath="graphix" check-warnings="true">
-      <compilation-unit name="minimal-resolution">
-        <output-dir compare="Text">minimal-resolution</output-dir>
-        <expected-warn>Vertex label could not be resolved. Assuming that vertex $n has all schema labels.</expected-warn>
-        <expected-warn>Vertex label could not be resolved. Assuming that vertex $m has all schema labels.</expected-warn>
-        <expected-warn>Vertex label could not be resolved. Assuming that vertex $n has all schema labels.</expected-warn>
       </compilation-unit>
     </test-case>
   </test-group>
@@ -104,7 +95,7 @@
         <expected-error>Query edge given, but no edge is defined in the schema.</expected-error>
         <expected-error>Sub-path edges cannot have a hop length less than 1.</expected-error>
         <expected-error>Sub-path edges cannot have a maximum hop length (2) less than the minimum hop length (4).</expected-error>
-        <expected-error>Conflicting primary keys for vertices with label Vertex1</expected-error>
+        <expected-error>Conflicting vertex label found: Vertex1</expected-error>
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>

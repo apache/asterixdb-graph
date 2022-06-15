@@ -16,45 +16,47 @@
  */
 package org.apache.asterix.graphix.lang.rewrites;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import org.apache.asterix.common.functions.FunctionSignature;
+import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.lang.common.rewrites.LangRewritingContext;
 import org.apache.asterix.lang.common.statement.FunctionDecl;
+import org.apache.asterix.lang.common.statement.ViewDecl;
 import org.apache.asterix.lang.common.struct.VarIdentifier;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
 /**
- * Wrapper class for {@link org.apache.asterix.lang.common.rewrites.LangRewritingContext}. We are particularly
- * interested in creating our own system-generated variables (distinct from those generated in the SQL++ rewrites).
+ * Wrapper class for {@link LangRewritingContext} and for Graphix specific rewriting.
  */
-public class GraphixRewritingContext {
-    private final LangRewritingContext langRewritingContext;
+public class GraphixRewritingContext extends LangRewritingContext {
+    private final Map<GraphIdentifier, DeclareGraphStatement> declaredGraphs = new HashMap<>();
 
-    public GraphixRewritingContext(LangRewritingContext langRewritingContext) {
-        this.langRewritingContext = langRewritingContext;
+    public GraphixRewritingContext(MetadataProvider metadataProvider, List<FunctionDecl> declaredFunctions,
+            List<ViewDecl> declaredViews, Set<DeclareGraphStatement> declareGraphStatements,
+            IWarningCollector warningCollector, int varCounter) {
+        super(metadataProvider, declaredFunctions, declaredViews, warningCollector, varCounter);
+        declareGraphStatements.forEach(d -> {
+            GraphIdentifier graphIdentifier = new GraphIdentifier(d.getDataverseName(), d.getGraphName());
+            this.declaredGraphs.put(graphIdentifier, d);
+        });
     }
 
-    public MetadataProvider getMetadataProvider() {
-        return langRewritingContext.getMetadataProvider();
+    public Map<GraphIdentifier, DeclareGraphStatement> getDeclaredGraphs() {
+        return declaredGraphs;
     }
 
-    public IWarningCollector getWarningCollector() {
-        return langRewritingContext.getWarningCollector();
-    }
-
-    public LangRewritingContext getLangRewritingContext() {
-        return langRewritingContext;
-    }
-
-    public Map<FunctionSignature, FunctionDecl> getDeclaredFunctions() {
-        return langRewritingContext.getDeclaredFunctions();
-    }
-
-    public VarIdentifier getNewVariable() {
-        VarIdentifier langRewriteGeneratedVar = langRewritingContext.newVariable();
+    public VarIdentifier getNewGraphixVariable() {
+        VarIdentifier langRewriteGeneratedVar = newVariable();
         String graphixGeneratedName = "#GG_" + langRewriteGeneratedVar.getValue().substring(1);
         return new VarIdentifier(graphixGeneratedName, langRewriteGeneratedVar.getId());
+    }
+
+    public static boolean isGraphixVariable(VarIdentifier varIdentifier) {
+        return varIdentifier.getValue().startsWith("#GG_");
     }
 }

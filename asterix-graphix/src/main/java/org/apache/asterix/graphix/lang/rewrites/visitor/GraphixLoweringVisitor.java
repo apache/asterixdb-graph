@@ -18,237 +18,298 @@
  */
 package org.apache.asterix.graphix.lang.rewrites.visitor;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
+import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
-import org.apache.asterix.graphix.algebra.compiler.provider.GraphixCompilationProvider;
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
+import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.clause.GraphSelectBlock;
-import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
+import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
-import org.apache.asterix.graphix.lang.rewrites.assembly.IExprAssembly;
-import org.apache.asterix.graphix.lang.rewrites.common.EdgeDependencyGraph;
 import org.apache.asterix.graphix.lang.rewrites.common.ElementLookupTable;
-import org.apache.asterix.graphix.lang.rewrites.lower.GraphixLowerSupplier;
-import org.apache.asterix.graphix.lang.rewrites.lower.LowerSupplierContext;
-import org.apache.asterix.graphix.lang.rewrites.lower.LowerSupplierNode;
-import org.apache.asterix.graphix.lang.rewrites.lower.assembly.ExpandEdgeLowerAssembly;
-import org.apache.asterix.graphix.lang.rewrites.visitor.ElementAnalysisVisitor.FromGraphClauseContext;
-import org.apache.asterix.lang.common.base.AbstractClause;
-import org.apache.asterix.lang.common.base.Clause;
+import org.apache.asterix.graphix.lang.rewrites.lower.EnvironmentActionFactory;
+import org.apache.asterix.graphix.lang.rewrites.lower.LoweringAliasLookupTable;
+import org.apache.asterix.graphix.lang.rewrites.lower.LoweringEnvironment;
+import org.apache.asterix.graphix.lang.rewrites.visitor.ElementBodyAnalysisVisitor.ElementBodyAnalysisContext;
+import org.apache.asterix.graphix.lang.rewrites.visitor.StructureAnalysisVisitor.StructureContext;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
+import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
-import org.apache.asterix.lang.common.clause.LetClause;
-import org.apache.asterix.lang.common.expression.FieldAccessor;
-import org.apache.asterix.lang.common.expression.VariableExpr;
-import org.apache.asterix.lang.common.struct.Identifier;
+import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.struct.VarIdentifier;
-import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
-import org.apache.asterix.lang.sqlpp.clause.FromClause;
 import org.apache.asterix.lang.sqlpp.clause.FromTerm;
-import org.apache.asterix.lang.sqlpp.clause.JoinClause;
-import org.apache.asterix.lang.sqlpp.clause.Projection;
-import org.apache.asterix.lang.sqlpp.clause.SelectRegular;
-import org.apache.asterix.lang.sqlpp.clause.UnnestClause;
 import org.apache.asterix.lang.sqlpp.expression.SelectExpression;
-import org.apache.asterix.lang.sqlpp.util.SqlppRewriteUtil;
-import org.apache.asterix.lang.sqlpp.util.SqlppVariableUtil;
-import org.apache.asterix.metadata.declared.MetadataProvider;
+import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 
 /**
- * Rewrite a graph AST to utilize non-graph AST nodes (i.e. replace the GRAPH-SELECT-BLOCK with a SELECT-BLOCK).
- *
- * @see org.apache.asterix.graphix.lang.rewrites.lower.GraphixLowerSupplier
+ * Rewrite a graph AST to utilize non-graph AST nodes (i.e. replace GRAPH-SELECT-BLOCKs with a SELECT-BLOCK).
  */
 public class GraphixLoweringVisitor extends AbstractGraphixQueryVisitor {
-    private final Map<FromGraphClause, FromGraphClauseContext> fromGraphClauseContextMap;
-    private final ElementLookupTable<GraphElementIdentifier> elementLookupTable;
+    private final Map<FromGraphClause, StructureContext> fromGraphClauseContextMap;
+    private final ElementLookupTable elementLookupTable;
     private final GraphixRewritingContext graphixRewritingContext;
+    private SelectExpression topLevelSelectExpression;
 
-    // In addition to the parent GRAPH-SELECT-BLOCK, we must keep track of the parent SELECT-EXPR.
-    private SelectExpression selectExpression;
+    // Our stack corresponds to which GRAPH-SELECT-BLOCK we are currently working with.
+    private final Map<GraphElementIdentifier, ElementBodyAnalysisContext> analysisContextMap;
+    private final Deque<LoweringEnvironment> environmentStack;
+    private final LoweringAliasLookupTable aliasLookupTable;
+    private final EnvironmentActionFactory environmentActionFactory;
 
-    public GraphixLoweringVisitor(Map<FromGraphClause, FromGraphClauseContext> fromGraphClauseContextMap,
-            ElementLookupTable<GraphElementIdentifier> elementLookupTable,
-            GraphixRewritingContext graphixRewritingContext) {
-        this.fromGraphClauseContextMap = fromGraphClauseContextMap;
-        this.elementLookupTable = elementLookupTable;
-        this.graphixRewritingContext = graphixRewritingContext;
+    public GraphixLoweringVisitor(GraphixRewritingContext graphixRewritingContext,
+            ElementLookupTable elementLookupTable, Map<FromGraphClause, StructureContext> fromGraphClauseContextMap) {
+        this.fromGraphClauseContextMap = Objects.requireNonNull(fromGraphClauseContextMap);
+        this.elementLookupTable = Objects.requireNonNull(elementLookupTable);
+        this.graphixRewritingContext = Objects.requireNonNull(graphixRewritingContext);
+        this.aliasLookupTable = new LoweringAliasLookupTable();
+        this.environmentStack = new ArrayDeque<>();
+
+        // All actions on our environment are supplied by the factory below.
+        Map<GraphElementIdentifier, ElementBodyAnalysisContext> bodyAnalysisContextMap = new HashMap<>();
+        this.environmentActionFactory = new EnvironmentActionFactory(bodyAnalysisContextMap, elementLookupTable,
+                aliasLookupTable, graphixRewritingContext);
+        this.analysisContextMap = bodyAnalysisContextMap;
+    }
+
+    @Override
+    public Expression visit(SelectExpression selectExpression, ILangExpression arg) throws CompilationException {
+        if (!selectExpression.isSubquery() || topLevelSelectExpression == null) {
+            topLevelSelectExpression = selectExpression;
+        }
+        return super.visit(selectExpression, arg);
     }
 
     @Override
     public Expression visit(GraphSelectBlock graphSelectBlock, ILangExpression arg) throws CompilationException {
-        boolean hadFromGraphClause = false;
+        SelectExpression selectExpression = (SelectExpression) arg;
         if (graphSelectBlock.hasFromGraphClause()) {
-            // We will remove the FROM-GRAPH node and replace this with a FROM node on the child visit.
-            selectExpression = (SelectExpression) arg;
-            hadFromGraphClause = true;
-            graphSelectBlock.getFromGraphClause().accept(this, graphSelectBlock);
-        }
-        if (graphSelectBlock.hasLetWhereClauses()) {
-            for (AbstractClause clause : graphSelectBlock.getLetWhereList()) {
-                clause.accept(this, arg);
-            }
-        }
-        if (graphSelectBlock.hasGroupbyClause()) {
-            graphSelectBlock.getGroupbyClause().accept(this, arg);
-        }
-        if (graphSelectBlock.hasLetHavingClausesAfterGroupby()) {
-            for (AbstractClause clause : graphSelectBlock.getLetHavingListAfterGroupby()) {
-                clause.accept(this, arg);
-            }
-        }
-        if (hadFromGraphClause && graphSelectBlock.getSelectClause().selectRegular()) {
-            // A special case: if we have SELECT *, modify this to VAR.*.
-            if (graphSelectBlock.getSelectClause().getSelectRegular().getProjections().stream()
-                    .allMatch(p -> p.getKind() == Projection.Kind.STAR)) {
-                FromTerm fromTerm = graphSelectBlock.getFromClause().getFromTerms().get(0);
-                Projection projection = new Projection(Projection.Kind.VAR_STAR, fromTerm.getLeftVariable(), null);
-                SelectRegular selectRegular = new SelectRegular(List.of(projection));
-                graphSelectBlock.getSelectClause().setSelectRegular(selectRegular);
-            }
-        }
-        graphSelectBlock.getSelectClause().accept(this, arg);
-        return null;
-    }
+            FromGraphClause fromGraphClause = graphSelectBlock.getFromGraphClause();
 
-    @Override
-    public Expression visit(LetClause letClause, ILangExpression arg) throws CompilationException {
-        // We also need to visit the binding variable here (in case we need to remove the GRAPH-VARIABLE-EXPR).
-        letClause.setVarExpr((VariableExpr) letClause.getVarExpr().accept(this, arg));
-        return super.visit(letClause, arg);
+            // Initialize a new lowering environment.
+            GraphIdentifier graphIdentifier = fromGraphClauseContextMap.get(fromGraphClause).getGraphIdentifier();
+            LoweringEnvironment newEnvironment = new LoweringEnvironment(graphSelectBlock, graphixRewritingContext);
+            environmentActionFactory.reset(graphIdentifier);
+
+            // We will remove the FROM-GRAPH node and replace this with a FROM node on the child visit.
+            environmentStack.addLast(newEnvironment);
+            super.visit(graphSelectBlock, graphSelectBlock);
+            environmentStack.removeLast();
+
+            // See if there are Graphix functions declared anywhere in our query.
+            Set<FunctionIdentifier> graphixFunctionSet = new HashSet<>();
+            topLevelSelectExpression.accept(new AbstractGraphixQueryVisitor() {
+                @Override
+                public Expression visit(CallExpr callExpr, ILangExpression arg) throws CompilationException {
+                    FunctionSignature functionSignature = callExpr.getFunctionSignature();
+                    if (functionSignature.getDataverseName().equals(GraphixFunctionIdentifiers.GRAPHIX_DV)) {
+                        graphixFunctionSet.add(functionSignature.createFunctionIdentifier());
+                    }
+                    return super.visit(callExpr, arg);
+                }
+            }, null);
+
+            // If so, then we need to perform a pass for schema enrichment.
+            if (!graphixFunctionSet.isEmpty()) {
+                SchemaEnrichmentVisitor schemaEnrichmentVisitor = new SchemaEnrichmentVisitor(elementLookupTable,
+                        graphIdentifier, graphSelectBlock, graphixFunctionSet);
+                selectExpression.accept(schemaEnrichmentVisitor, null);
+                if (selectExpression.hasOrderby()) {
+                    selectExpression.getOrderbyClause().accept(schemaEnrichmentVisitor, null);
+                }
+                if (selectExpression.hasLimit()) {
+                    selectExpression.getLimitClause().accept(schemaEnrichmentVisitor, null);
+                }
+            }
+
+        } else {
+            super.visit(graphSelectBlock, arg);
+        }
+        return null;
     }
 
     @Override
     public Expression visit(FromGraphClause fromGraphClause, ILangExpression arg) throws CompilationException {
-        GraphSelectBlock parentGraphSelect = (GraphSelectBlock) arg;
-
-        // Build the context for our lowering strategy.
-        FromGraphClauseContext fromGraphClauseContext = fromGraphClauseContextMap.get(fromGraphClause);
-        MetadataProvider metadataProvider = graphixRewritingContext.getMetadataProvider();
-        DataverseName dataverseName = (fromGraphClause.getDataverseName() == null)
-                ? metadataProvider.getDefaultDataverseName() : fromGraphClause.getDataverseName();
-        String graphName = (fromGraphClause.getGraphName() != null) ? fromGraphClause.getGraphName().getValue()
-                : fromGraphClause.getGraphConstructor().getInstanceID();
-        List<PathPatternExpr> pathPatternExprList = fromGraphClause.getMatchClauses().stream()
-                .map(MatchClause::getPathExpressions).flatMap(Collection::stream).collect(Collectors.toList());
-        GraphIdentifier graphIdentifier = new GraphIdentifier(dataverseName, graphName);
-        LowerSupplierContext lowerSupplierContext = new LowerSupplierContext(graphixRewritingContext, graphIdentifier,
-                fromGraphClauseContext.getDanglingVertices(), fromGraphClauseContext.getOptionalVariables(),
-                pathPatternExprList, elementLookupTable);
-
-        // Determine our lowering strategy. By default, we will fully expand any variable-length edges.
-        String strategyMetadataKeyName = GraphixCompilationProvider.EDGE_STRATEGY_METADATA_CONFIG;
-        Function<EdgePatternExpr, IExprAssembly<LowerSupplierNode>> edgeHandlingStrategy;
-        if (metadataProvider.getConfig().containsKey(strategyMetadataKeyName)) {
-            String strategyProperty = metadataProvider.getProperty(strategyMetadataKeyName);
-            if (strategyProperty.equalsIgnoreCase(ExpandEdgeLowerAssembly.METADATA_CONFIG_NAME)) {
-                edgeHandlingStrategy = e -> new ExpandEdgeLowerAssembly(e, lowerSupplierContext);
-
-            } else {
-                throw new CompilationException(ErrorCode.COMPILATION_ERROR, fromGraphClause.getSourceLocation(),
-                        "Unknown edge handling strategy specified: " + strategyProperty);
-            }
-
-        } else {
-            edgeHandlingStrategy = e -> new ExpandEdgeLowerAssembly(e, lowerSupplierContext);
+        // Perform an analysis pass over each element body. We need to determine what we can and can't inline.
+        for (GraphElementDeclaration graphElementDeclaration : elementLookupTable) {
+            ElementBodyAnalysisVisitor elementBodyAnalysisVisitor = new ElementBodyAnalysisVisitor();
+            GraphElementIdentifier elementIdentifier = graphElementDeclaration.getIdentifier();
+            graphElementDeclaration.getNormalizedBody().accept(elementBodyAnalysisVisitor, null);
+            analysisContextMap.put(elementIdentifier, elementBodyAnalysisVisitor.getElementBodyAnalysisContext());
         }
+        LoweringEnvironment workingEnvironment = environmentStack.getLast();
 
-        // Create a DAG of lowering nodes. We are interested in the tail of the generated DAG.
-        List<LowerSupplierNode> lowerSupplierNodeList = new ArrayList<>();
-        EdgeDependencyGraph edgeDependencyGraph = fromGraphClauseContext.getEdgeDependencyGraph();
-        new GraphixLowerSupplier(lowerSupplierContext, edgeDependencyGraph, edgeHandlingStrategy)
-                .invoke(lowerSupplierNodeList::add);
-        LowerSupplierNode tailLowerNode = lowerSupplierNodeList.get(lowerSupplierNodeList.size() - 1);
-
-        // Build our FROM-TERM, which will reference the tail lower node.
-        VariableExpr qualifyingVariable = tailLowerNode.getBindingVar();
-        FromTerm workingFromTerm = new FromTerm(qualifyingVariable, new VariableExpr(qualifyingVariable.getVar()), null,
-                fromGraphClause.getCorrelateClauses());
-        parentGraphSelect.setFromGraphClause(null);
-
-        // Introduce the variables from our assembly into our current SELECT-BLOCK.
-        List<AbstractClause> lowerNodeVariables = tailLowerNode.getProjectionList().stream().map(p -> {
-            FieldAccessor fieldAccessor = new FieldAccessor(qualifyingVariable, new Identifier(p.getName()));
-            String identifierName = SqlppVariableUtil.toInternalVariableName(p.getName());
-            VariableExpr variableExpr = new VariableExpr(new VarIdentifier(identifierName));
-            return new LetClause(variableExpr, fieldAccessor);
-        }).collect(Collectors.toList());
-        List<AbstractClause> newLetWhereList = new ArrayList<>();
-        newLetWhereList.addAll(lowerNodeVariables);
-        newLetWhereList.addAll(parentGraphSelect.getLetWhereList());
-        parentGraphSelect.getLetWhereList().clear();
-        parentGraphSelect.getLetWhereList().addAll(newLetWhereList);
-
-        // Qualify the graph element variables in our correlate clauses.
-        Supplier<AbstractGraphixQueryVisitor> qualifyingVisitorSupplier = () -> new AbstractGraphixQueryVisitor() {
-            private boolean isAtTopLevel = true;
-
-            @Override
-            public Expression visit(SelectExpression selectExpression, ILangExpression arg)
-                    throws CompilationException {
-                // Introduce our variables into the SELECT-EXPR inside a correlated clause.
-                List<LetClause> innerLowerNodeVariables = new ArrayList<>();
-                for (AbstractClause abstractClause : lowerNodeVariables) {
-                    innerLowerNodeVariables.add((LetClause) SqlppRewriteUtil.deepCopy(abstractClause));
-                }
-                List<LetClause> newLetClauseList = new ArrayList<>();
-                newLetClauseList.addAll(innerLowerNodeVariables);
-                newLetClauseList.addAll(selectExpression.getLetList());
-                selectExpression.getLetList().clear();
-                selectExpression.getLetList().addAll(newLetClauseList);
-
-                // Indicate that we should not qualify any of the variables in this SELECT.
-                boolean wasAtTopLevel = isAtTopLevel;
-                isAtTopLevel = false;
-                Expression resultOfVisit = super.visit(selectExpression, arg);
-                isAtTopLevel = wasAtTopLevel;
-                return resultOfVisit;
+        // Lower our MATCH-CLAUSEs. We should be working with canonical-ized patterns.
+        boolean wasInitialEdgeOrderingEncountered = false;
+        StructureContext structureContext = fromGraphClauseContextMap.get(fromGraphClause);
+        Deque<List<VertexPatternExpr>> danglingVertexQueue = structureContext.getDanglingVertexQueue();
+        Deque<List<PathPatternExpr>> pathPatternQueue = structureContext.getPathPatternQueue();
+        for (Iterable<EdgePatternExpr> edgeOrdering : structureContext.getEdgeDependencyGraph()) {
+            if (wasInitialEdgeOrderingEncountered) {
+                workingEnvironment.beginLeftMatch();
             }
-
-            @Override
-            public Expression visit(VariableExpr variableExpr, ILangExpression arg) throws CompilationException {
-                String variableName = SqlppVariableUtil.toUserDefinedName(variableExpr.getVar().getValue());
-                if (isAtTopLevel
-                        && tailLowerNode.getProjectionList().stream().anyMatch(p -> p.getName().equals(variableName))) {
-                    return new FieldAccessor(qualifyingVariable, new Identifier(variableName));
-                }
-                return super.visit(variableExpr, arg);
+            for (EdgePatternExpr edgePatternExpr : edgeOrdering) {
+                edgePatternExpr.accept(this, fromGraphClause);
             }
-        };
-        for (AbstractBinaryCorrelateClause correlateClause : workingFromTerm.getCorrelateClauses()) {
-            AbstractGraphixQueryVisitor variableVisitor = qualifyingVisitorSupplier.get();
-            if (correlateClause.getClauseType() == Clause.ClauseType.JOIN_CLAUSE) {
-                // The expression bound to a JOIN clause cannot see the graph element variables of this FROM-GRAPH.
-                JoinClause joinClause = (JoinClause) correlateClause;
-                joinClause.setConditionExpression(joinClause.getConditionExpression().accept(variableVisitor, null));
-
-            } else if (correlateClause.getClauseType() == Clause.ClauseType.UNNEST_CLAUSE) {
-                UnnestClause unnestClause = (UnnestClause) correlateClause;
-                unnestClause.setRightExpression(unnestClause.getRightExpression().accept(variableVisitor, null));
-
-            } else { // (correlateClause.getClauseType() == Clause.ClauseType.NEST_CLAUSE) {
-                throw new CompilationException(ErrorCode.COMPILATION_ERROR, correlateClause.getSourceLocation(),
-                        "Nest clause has not been implemented.");
+            for (VertexPatternExpr danglingVertexExpr : danglingVertexQueue.removeFirst()) {
+                workingEnvironment.acceptAction(environmentActionFactory.buildDanglingVertexAction(danglingVertexExpr));
+            }
+            if (wasInitialEdgeOrderingEncountered) {
+                workingEnvironment.endLeftMatch(graphixRewritingContext.getWarningCollector());
+            }
+            for (PathPatternExpr pathPatternExpr : pathPatternQueue.removeFirst()) {
+                workingEnvironment.acceptAction(environmentActionFactory.buildPathPatternAction(pathPatternExpr));
+            }
+            wasInitialEdgeOrderingEncountered = true;
+        }
+        if (!structureContext.getEdgeDependencyGraph().iterator().hasNext()) {
+            for (VertexPatternExpr danglingVertexExpr : danglingVertexQueue.removeFirst()) {
+                workingEnvironment.acceptAction(environmentActionFactory.buildDanglingVertexAction(danglingVertexExpr));
+            }
+            for (PathPatternExpr pathPatternExpr : pathPatternQueue.removeFirst()) {
+                workingEnvironment.acceptAction(environmentActionFactory.buildPathPatternAction(pathPatternExpr));
             }
         }
+        workingEnvironment.acceptAction(environmentActionFactory.buildIsomorphismAction(fromGraphClause));
 
-        // Finalize our lowering: replace our FROM-GRAPH-CLAUSE with a FROM-CLAUSE and add our LET-CLAUSE list.
-        parentGraphSelect.setFromClause(new FromClause(Collections.singletonList(workingFromTerm)));
-        lowerSupplierNodeList.forEach(g -> selectExpression.getLetList().add(g.buildLetClause()));
+        // Finalize our lowering by removing this FROM-GRAPH-CLAUSE from our parent GRAPH-SELECT-BLOCK.
+        workingEnvironment.finalizeLowering(fromGraphClause, graphixRewritingContext.getWarningCollector());
+
+        // Add our correlate clauses, if any, to our tail FROM-TERM.
+        if (!fromGraphClause.getCorrelateClauses().isEmpty()) {
+            GraphSelectBlock graphSelectBlock = (GraphSelectBlock) arg;
+            List<FromTerm> fromTerms = graphSelectBlock.getFromClause().getFromTerms();
+            FromTerm tailFromTerm = fromTerms.get(fromTerms.size() - 1);
+            tailFromTerm.getCorrelateClauses().addAll(fromGraphClause.getCorrelateClauses());
+        }
         return null;
+    }
+
+    @Override
+    public Expression visit(EdgePatternExpr edgePatternExpr, ILangExpression arg) throws CompilationException {
+        EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
+        LoweringEnvironment lowerEnvironment = environmentStack.getLast();
+
+        // We should only be working with one identifier (given that we only have one label).
+        GraphIdentifier graphIdentifier = fromGraphClauseContextMap.get((FromGraphClause) arg).getGraphIdentifier();
+        List<GraphElementIdentifier> edgeElementIDs = edgeDescriptor.generateIdentifiers(graphIdentifier);
+        if (edgeElementIDs.size() != 1) {
+            throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, "Found non-canonical edge pattern!");
+        }
+        GraphElementIdentifier edgeIdentifier = edgeElementIDs.get(0);
+        ElementBodyAnalysisContext edgeBodyAnalysisContext = analysisContextMap.get(edgeIdentifier);
+        DataverseName edgeDataverseName = edgeBodyAnalysisContext.getDataverseName();
+        String edgeDatasetName = edgeBodyAnalysisContext.getDatasetName();
+        boolean isEdgeInline = edgeBodyAnalysisContext.isExpressionInline();
+
+        // Determine our source and destination vertices.
+        VertexPatternExpr sourceVertex, destVertex;
+        if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT) {
+            sourceVertex = edgePatternExpr.getLeftVertex();
+            destVertex = edgePatternExpr.getRightVertex();
+
+        } else { // edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT
+            sourceVertex = edgePatternExpr.getRightVertex();
+            destVertex = edgePatternExpr.getLeftVertex();
+        }
+
+        // Collect information about our source -> edge JOIN.
+        GraphElementIdentifier sourceIdentifier = sourceVertex.generateIdentifiers(graphIdentifier).get(0);
+        ElementBodyAnalysisContext sourceBodyAnalysisContext = analysisContextMap.get(sourceIdentifier);
+        VarIdentifier sourceVertexVariable = sourceVertex.getVariableExpr().getVar();
+        List<List<String>> sourceVertexKey = elementLookupTable.getVertexKey(sourceIdentifier);
+        List<List<String>> sourceEdgeKey = elementLookupTable.getEdgeSourceKey(edgeIdentifier);
+        Function<GraphElementIdentifier, List<List<String>>> sourceKey = elementLookupTable::getEdgeSourceKey;
+        boolean isSourceInline = sourceBodyAnalysisContext.isExpressionInline();
+        boolean isSourceIntroduced = aliasLookupTable.getIterationAlias(sourceVertexVariable) != null;
+        boolean isSourceFolded = isSourceInline && sourceBodyAnalysisContext.getDatasetName().equals(edgeDatasetName)
+                && sourceBodyAnalysisContext.getDataverseName().equals(edgeDataverseName)
+                && sourceVertexKey.equals(sourceEdgeKey);
+
+        // ...and our dest -> edge JOIN.
+        GraphElementIdentifier destIdentifier = destVertex.generateIdentifiers(graphIdentifier).get(0);
+        ElementBodyAnalysisContext destBodyAnalysisContext = analysisContextMap.get(destIdentifier);
+        VarIdentifier destVertexVariable = destVertex.getVariableExpr().getVar();
+        List<List<String>> destVertexKey = elementLookupTable.getVertexKey(destIdentifier);
+        List<List<String>> destEdgeKey = elementLookupTable.getEdgeDestKey(edgeIdentifier);
+        Function<GraphElementIdentifier, List<List<String>>> destKey = elementLookupTable::getEdgeDestKey;
+        boolean isDestInline = destBodyAnalysisContext.isExpressionInline();
+        boolean isDestIntroduced = aliasLookupTable.getIterationAlias(destVertexVariable) != null;
+        boolean isDestFolded = isDestInline && destBodyAnalysisContext.getDatasetName().equals(edgeDatasetName)
+                && destBodyAnalysisContext.getDataverseName().equals(edgeDataverseName)
+                && destVertexKey.equals(destEdgeKey);
+
+        // Determine our strategy for lowering our edge.
+        if (isEdgeInline && isSourceFolded && !isDestIntroduced) {
+            if (!isSourceIntroduced) {
+                lowerEnvironment.acceptAction(environmentActionFactory.buildDanglingVertexAction(sourceVertex));
+            }
+            lowerEnvironment
+                    .acceptAction(environmentActionFactory.buildFoldedEdgeAction(sourceVertex, edgePatternExpr));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildBoundVertexAction(destVertex, edgePatternExpr, destKey));
+
+        } else if (isEdgeInline && isDestFolded && !isSourceIntroduced) {
+            if (!isDestIntroduced) {
+                lowerEnvironment.acceptAction(environmentActionFactory.buildDanglingVertexAction(destVertex));
+            }
+            lowerEnvironment.acceptAction(environmentActionFactory.buildFoldedEdgeAction(destVertex, edgePatternExpr));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildBoundVertexAction(sourceVertex, edgePatternExpr, sourceKey));
+
+        } else if (isSourceIntroduced && isDestIntroduced) {
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildNonFoldedEdgeAction(sourceVertex, edgePatternExpr, sourceKey));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildRawJoinVertexAction(destVertex, edgePatternExpr, destKey));
+
+        } else if (isSourceIntroduced) { // !isDestIntroduced
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildNonFoldedEdgeAction(sourceVertex, edgePatternExpr, sourceKey));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildBoundVertexAction(destVertex, edgePatternExpr, destKey));
+
+        } else if (isDestIntroduced) { // !isSourceIntroduced
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildNonFoldedEdgeAction(destVertex, edgePatternExpr, destKey));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildBoundVertexAction(sourceVertex, edgePatternExpr, sourceKey));
+
+        } else { // !isSourceIntroduced && !isDestIntroduced
+            // When nothing is introduced, start off from LEFT to RIGHT instead of considering our source and dest.
+            VertexPatternExpr leftVertex = edgePatternExpr.getLeftVertex();
+            VertexPatternExpr rightVertex = edgePatternExpr.getRightVertex();
+            Function<GraphElementIdentifier, List<List<String>>> leftKey;
+            Function<GraphElementIdentifier, List<List<String>>> rightKey;
+            if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT) {
+                leftKey = sourceKey;
+                rightKey = destKey;
+
+            } else { // edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT
+                leftKey = destKey;
+                rightKey = sourceKey;
+            }
+            lowerEnvironment.acceptAction(environmentActionFactory.buildDanglingVertexAction(leftVertex));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildNonFoldedEdgeAction(leftVertex, edgePatternExpr, leftKey));
+            lowerEnvironment.acceptAction(
+                    environmentActionFactory.buildBoundVertexAction(rightVertex, edgePatternExpr, rightKey));
+        }
+        return edgePatternExpr;
     }
 }

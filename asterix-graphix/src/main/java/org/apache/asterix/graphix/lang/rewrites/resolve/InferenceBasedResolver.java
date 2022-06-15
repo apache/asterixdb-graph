@@ -27,6 +27,7 @@ import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
+import org.apache.asterix.graphix.lang.rewrites.visitor.GraphixDeepCopyVisitor;
 import org.apache.asterix.graphix.lang.rewrites.visitor.LabelConsistencyVisitor;
 import org.apache.asterix.graphix.lang.rewrites.visitor.QueryKnowledgeVisitor;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
@@ -39,11 +40,13 @@ public class InferenceBasedResolver implements IGraphElementResolver {
     public static final String METADATA_CONFIG_NAME = "inference-based";
 
     private final QueryKnowledgeVisitor queryKnowledgeVisitor;
+    private final GraphixDeepCopyVisitor graphixDeepCopyVisitor;
     private final SchemaKnowledgeTable schemaKnowledgeTable;
     private boolean isAtFixedPoint = false;
 
     public InferenceBasedResolver(SchemaKnowledgeTable schemaKnowledgeTable) {
         this.queryKnowledgeVisitor = new QueryKnowledgeVisitor();
+        this.graphixDeepCopyVisitor = new GraphixDeepCopyVisitor();
         this.schemaKnowledgeTable = schemaKnowledgeTable;
     }
 
@@ -66,7 +69,12 @@ public class InferenceBasedResolver implements IGraphElementResolver {
         }
     }
 
-    private boolean resolveEdge(EdgePatternExpr edgePatternExpr) {
+    /**
+     * Attempt to resolve the unknowns in an {@link EdgePatternExpr}. This includes the labels of the contained
+     * vertices and edges, as well as the edge direction.
+     * @return True if no new information was added. False otherwise.
+     */
+    private boolean resolveEdge(EdgePatternExpr edgePatternExpr) throws CompilationException {
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
         if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.PATH) {
             VertexPatternExpr workingLeftVertex = edgePatternExpr.getLeftVertex();
@@ -105,12 +113,14 @@ public class InferenceBasedResolver implements IGraphElementResolver {
 
         if (edgeDescriptor.getEdgeDirection() == EdgeDescriptor.EdgeDirection.UNDIRECTED) {
             // We have an undirected edge. Recurse with a LEFT_TO_RIGHT edge...
-            edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT);
-            boolean isLeftToRightModified = !resolveEdge(edgePatternExpr);
+            EdgePatternExpr leftToRightEdgePatternExpr = graphixDeepCopyVisitor.visit(edgePatternExpr, null);
+            leftToRightEdgePatternExpr.getEdgeDescriptor().setEdgeDirection(EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT);
+            boolean isLeftToRightModified = !resolveEdge(leftToRightEdgePatternExpr);
 
             // ...and a RIGHT_TO_LEFT edge.
-            edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT);
-            boolean isRightToLeftModified = !resolveEdge(edgePatternExpr);
+            EdgePatternExpr rightToLeftEdgePatternExpr = graphixDeepCopyVisitor.visit(edgePatternExpr, null);
+            rightToLeftEdgePatternExpr.getEdgeDescriptor().setEdgeDirection(EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT);
+            boolean isRightToLeftModified = !resolveEdge(rightToLeftEdgePatternExpr);
 
             // Determine the direction of our edge, if possible.
             if (isLeftToRightModified && !isRightToLeftModified) {
@@ -121,6 +131,20 @@ public class InferenceBasedResolver implements IGraphElementResolver {
 
             } else {
                 edgeDescriptor.setEdgeDirection(EdgeDescriptor.EdgeDirection.UNDIRECTED);
+            }
+
+            // Propagate our label sets.
+            VertexPatternExpr leftVertexExpr = edgePatternExpr.getLeftVertex();
+            VertexPatternExpr rightVertexExpr = edgePatternExpr.getRightVertex();
+            if (isLeftToRightModified) {
+                edgeDescriptor.getEdgeLabels().addAll(leftToRightEdgePatternExpr.getEdgeDescriptor().getEdgeLabels());
+                leftVertexExpr.getLabels().addAll(leftToRightEdgePatternExpr.getLeftVertex().getLabels());
+                rightVertexExpr.getLabels().addAll(leftToRightEdgePatternExpr.getRightVertex().getLabels());
+            }
+            if (isRightToLeftModified) {
+                edgeDescriptor.getEdgeLabels().addAll(rightToLeftEdgePatternExpr.getEdgeDescriptor().getEdgeLabels());
+                leftVertexExpr.getLabels().addAll(rightToLeftEdgePatternExpr.getLeftVertex().getLabels());
+                rightVertexExpr.getLabels().addAll(rightToLeftEdgePatternExpr.getRightVertex().getLabels());
             }
             return !(isLeftToRightModified || isRightToLeftModified);
         }

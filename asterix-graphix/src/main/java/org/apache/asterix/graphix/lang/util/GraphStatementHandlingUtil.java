@@ -19,9 +19,9 @@
 package org.apache.asterix.graphix.lang.util;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -39,7 +39,7 @@ import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
 import org.apache.asterix.graphix.lang.rewrites.visitor.AbstractGraphixQueryVisitor;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.metadata.entity.dependency.DependencyIdentifier;
 import org.apache.asterix.graphix.metadata.entity.dependency.GraphRequirements;
 import org.apache.asterix.graphix.metadata.entity.dependency.IEntityRequirements;
@@ -133,30 +133,25 @@ public final class GraphStatementHandlingUtil {
         // Build the graph schema.
         GraphIdentifier graphIdentifier = new GraphIdentifier(activeDataverseName, cgs.getGraphName());
         Schema.Builder schemaBuilder = new Schema.Builder(graphIdentifier);
-        Map<GraphElementIdentifier, GraphElementDecl> graphElementDecls = new LinkedHashMap<>();
+        List<GraphElementDeclaration> graphElementDeclarations = new ArrayList<>();
         for (GraphConstructor.VertexConstructor vertex : cgs.getVertexElements()) {
             Vertex schemaVertex =
                     schemaBuilder.addVertex(vertex.getLabel(), vertex.getPrimaryKeyFields(), vertex.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
                     GraphElementIdentifier id = schemaVertex.getIdentifier();
-                    if (graphElementDecls.containsKey(id)) {
-                        graphElementDecls.get(id).getBodies().add(vertex.getExpression());
-
-                    } else {
-                        GraphElementDecl decl = new GraphElementDecl(id, vertex.getExpression());
-                        decl.setSourceLocation(vertex.getSourceLocation());
-                        graphElementDecls.put(schemaVertex.getIdentifier(), decl);
-                    }
+                    GraphElementDeclaration decl = new GraphElementDeclaration(id, vertex.getExpression());
+                    decl.setSourceLocation(vertex.getSourceLocation());
+                    graphElementDeclarations.add(decl);
                     break;
 
-                case CONFLICTING_PRIMARY_KEY:
+                case VERTEX_LABEL_CONFLICT:
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, vertex.getSourceLocation(),
-                            "Conflicting primary keys for vertices with label " + vertex.getLabel());
+                            "Conflicting vertex label found: " + vertex.getLabel());
 
                 default:
                     throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, vertex.getSourceLocation(),
-                            "Constructor vertex was not returned, but the error is not a conflicting primary key!");
+                            "Constructor vertex was not returned, but the error is not a vertex label conflict!");
             }
         }
         for (GraphConstructor.EdgeConstructor edge : cgs.getEdgeElements()) {
@@ -165,17 +160,10 @@ public final class GraphStatementHandlingUtil {
                             edge.getDestinationKeyFields(), edge.getSourceKeyFields(), edge.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
-                    if (edge.getDefinition() != null) {
-                        GraphElementIdentifier id = schemaEdge.getIdentifier();
-                        if (graphElementDecls.containsKey(id)) {
-                            graphElementDecls.get(id).getBodies().add(edge.getExpression());
-
-                        } else {
-                            GraphElementDecl decl = new GraphElementDecl(id, edge.getExpression());
-                            decl.setSourceLocation(edge.getSourceLocation());
-                            graphElementDecls.put(id, decl);
-                        }
-                    }
+                    GraphElementIdentifier id = schemaEdge.getIdentifier();
+                    GraphElementDeclaration decl = new GraphElementDeclaration(id, edge.getExpression());
+                    decl.setSourceLocation(edge.getSourceLocation());
+                    graphElementDeclarations.add(decl);
                     break;
 
                 case SOURCE_VERTEX_NOT_FOUND:
@@ -188,10 +176,9 @@ public final class GraphStatementHandlingUtil {
                             "Destination vertex " + edge.getDestinationLabel() + " not found in the edge "
                                     + edge.getEdgeLabel() + ".");
 
-                case CONFLICTING_SOURCE_KEY:
-                case CONFLICTING_DESTINATION_KEY:
+                case EDGE_LABEL_CONFLICT:
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, edge.getSourceLocation(),
-                            "Conflicting edge with the same label found: " + edge.getEdgeLabel());
+                            "Conflicting edge label found: " + edge.getEdgeLabel());
 
                 default:
                     throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, edge.getSourceLocation(),
@@ -203,22 +190,18 @@ public final class GraphStatementHandlingUtil {
         metadataProvider.setDefaultDataverse(dataverse);
         DataverseName dataverseName = (cgs.getDataverseName() != null) ? cgs.getDataverseName() : activeDataverseName;
         GraphRequirements requirements = new GraphRequirements(dataverseName, cgs.getGraphName());
-        for (GraphElementDecl graphElementDecl : graphElementDecls.values()) {
+        for (GraphElementDeclaration graphElementDeclaration : graphElementDeclarations) {
             // Determine the graph dependencies using the raw body.
             Set<DependencyIdentifier> graphDependencies = new HashSet<>();
-            for (Expression rawBody : graphElementDecl.getBodies()) {
-                collectDependenciesOnGraph(rawBody, activeDataverseName, graphDependencies);
-            }
+            collectDependenciesOnGraph(graphElementDeclaration.getRawBody(), activeDataverseName, graphDependencies);
             requirements.loadGraphDependencies(graphDependencies);
 
             // Verify that each element definition is usable.
             ((GraphixQueryTranslator) statementExecutor).setGraphElementNormalizedBody(metadataProvider,
-                    graphElementDecl, graphixQueryRewriter);
+                    graphElementDeclaration, graphixQueryRewriter);
 
             // Determine the non-graph dependencies using the normalized body.
-            for (Expression normalizedBody : graphElementDecl.getNormalizedBodies()) {
-                requirements.loadNonGraphDependencies(normalizedBody, graphixQueryRewriter);
-            }
+            requirements.loadNonGraphDependencies(graphElementDeclaration.getNormalizedBody(), graphixQueryRewriter);
         }
 
         // Add / upsert our graph + requirements to our metadata.

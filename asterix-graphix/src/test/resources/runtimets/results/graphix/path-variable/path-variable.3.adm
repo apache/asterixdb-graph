@@ -1,4 +1,4 @@
-{ "pathLength": 0, "edgeRecord": { "Edge": null, "RightVertex": null, "LeftVertex": { "user_id": 1, "best_friend": 2, "_GraphixElementDetail": { "Label": "User" }, "_GraphixVertexDetail": { "PrimaryKey": { "user_id": 1 } } } } }
-{ "pathLength": 0, "edgeRecord": { "Edge": null, "RightVertex": null, "LeftVertex": { "user_id": 2, "best_friend": 3, "_GraphixElementDetail": { "Label": "User" }, "_GraphixVertexDetail": { "PrimaryKey": { "user_id": 2 } } } } }
-{ "pathLength": 0, "edgeRecord": { "Edge": null, "RightVertex": null, "LeftVertex": { "user_id": 3, "_GraphixElementDetail": { "Label": "User" }, "_GraphixVertexDetail": { "PrimaryKey": { "user_id": 3 } } } } }
-{ "pathLength": 0, "edgeRecord": { "Edge": null, "RightVertex": null, "LeftVertex": { "user_id": 4, "_GraphixElementDetail": { "Label": "User" }, "_GraphixVertexDetail": { "PrimaryKey": { "user_id": 4 } } } } }
+{ "pathLength": 0, "pathVertex": { "user_id": 1, "best_friend": 2 } }
+{ "pathLength": 0, "pathVertex": { "user_id": 2, "best_friend": 3 } }
+{ "pathLength": 0, "pathVertex": { "user_id": 3 } }
+{ "pathLength": 0, "pathVertex": { "user_id": 4 } }

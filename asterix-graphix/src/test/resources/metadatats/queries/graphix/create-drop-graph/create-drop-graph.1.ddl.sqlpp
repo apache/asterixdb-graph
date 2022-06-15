@@ -80,11 +80,6 @@ EDGE              (:User)-[:FRIENDS_WITH]->(:User)
                   AS ( FROM    Yelp_B.Users U
                        UNNEST  U.friends F
                        SELECT  U.user_id, F AS friend ),
-EDGE              (:User)-[:FRIENDS_WITH]->(:User)
-                  SOURCE KEY (user_id)
-                  DESTINATION KEY (friend)
-                  AS ( FROM    Yelp_B.Friends F
-                       SELECT  F.* ),
 EDGE              (:Review)-[:MADE_BY]->(:User)
                   SOURCE KEY (review_id)
                   DESTINATION KEY (user_id)

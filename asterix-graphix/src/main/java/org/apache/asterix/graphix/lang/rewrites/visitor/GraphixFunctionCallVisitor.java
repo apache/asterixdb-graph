@@ -18,14 +18,13 @@
  */
 package org.apache.asterix.graphix.lang.rewrites.visitor;
 
-import java.util.List;
 import java.util.Map;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.functions.FunctionSignature;
-import org.apache.asterix.graphix.function.FunctionRewriteMap;
 import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
+import org.apache.asterix.graphix.function.GraphixFunctionMap;
 import org.apache.asterix.graphix.function.GraphixFunctionResolver;
 import org.apache.asterix.graphix.function.rewrite.IFunctionRewrite;
 import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
@@ -33,17 +32,18 @@ import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
 import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.statement.FunctionDecl;
+import org.apache.asterix.lang.sqlpp.visitor.base.AbstractSqlppSimpleExpressionVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 
 /**
- * Replace all Graphix-specific function calls with either a SQL++ AST or a Graphix AST (that will later be lowered).
+ * Replace all Graphix-specific function calls with a SQL++ expression.
  *
  * @see GraphixFunctionIdentifiers
  * @see GraphixFunctionResolver
- * @see FunctionRewriteMap
+ * @see GraphixFunctionMap
  */
-public class GraphixFunctionCallVisitor extends AbstractGraphixQueryVisitor {
+public class GraphixFunctionCallVisitor extends AbstractSqlppSimpleExpressionVisitor {
     private final GraphixRewritingContext graphixRewritingContext;
     private final GraphixFunctionResolver graphixFunctionResolver;
 
@@ -59,17 +59,16 @@ public class GraphixFunctionCallVisitor extends AbstractGraphixQueryVisitor {
     @Override
     public Expression visit(CallExpr callExpr, ILangExpression arg) throws CompilationException {
         // Determine which Graphix function we need to resolve.
-        FunctionSignature oldFunctionSignature = callExpr.getFunctionSignature();
-        FunctionSignature functionSignature = graphixFunctionResolver.resolve(oldFunctionSignature);
-        if (functionSignature == null) {
+        FunctionSignature functionSignature = graphixFunctionResolver.resolve(callExpr, true);
+        if (functionSignature == null || !functionSignature.getDataverseName().getCanonicalForm()
+                .equals(GraphixFunctionIdentifiers.GRAPHIX_DV.getCanonicalForm())) {
             return super.visit(callExpr, arg);
         }
 
         // Condition on our function ID, and perform the rewrite.
         FunctionIdentifier functionIdentifier = functionSignature.createFunctionIdentifier();
-        IFunctionRewrite functionRewrite = FunctionRewriteMap.getFunctionRewrite(functionIdentifier);
-        List<Expression> argList = callExpr.getExprList();
-        Expression rewrittenCallArgExpr = functionRewrite.apply(graphixRewritingContext, argList);
+        IFunctionRewrite functionRewrite = GraphixFunctionMap.getFunctionRewrite(functionIdentifier);
+        Expression rewrittenCallArgExpr = functionRewrite.apply(graphixRewritingContext, callExpr);
         if (rewrittenCallArgExpr == null) {
             throw new CompilationException(ErrorCode.COMPILATION_ERROR, callExpr.getSourceLocation(),
                     "Function " + functionIdentifier.getName() + " not implemented!");

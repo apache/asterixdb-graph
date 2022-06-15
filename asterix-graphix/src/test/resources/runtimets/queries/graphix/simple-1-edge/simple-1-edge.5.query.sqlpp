@@ -17,33 +17,21 @@
  * under the License.
  */
 
-// Two edge definitions, one vertex definition on the source and two vertex definitions on the destination.
+// One edge definition, single vertex definition on both sides, undirected.
 FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
                    AS Yelp.Users,
-            VERTEX (:User)
-                   PRIMARY KEY (user_id)
-                   AS ( FROM    Yelp.Friends F
-                        WHERE   F.user_id NOT IN (
-                            FROM    Yelp.Users U
-                            SELECT  VALUE U.user_id
-                        )
-                        SELECT  DISTINCT F.user_id ),
             EDGE   (:User)-[:FRIENDS_WITH]->(:User)
                    SOURCE KEY (user_id)
                    DESTINATION KEY (friend)
                    AS ( FROM    Yelp.Users U
                         UNNEST  U.friends F
                         SELECT  U.user_id AS user_id,
-                                F AS friend ),
-            EDGE   (:User)-[:FRIENDS_WITH]->(:User)
-                   SOURCE KEY (user_id)
-                   DESTINATION KEY (friend)
-                   AS ( FROM    Yelp.Friends F
-                        SELECT  F.user_id AS user_id,
-                                F.friend AS friend )
-MATCH       (u2:User)<-[:FRIENDS_WITH]-(u1:User)
+                                F AS friend )
+MATCH       (u2:User)-[fw:FRIENDS_WITH]-(u1:User)
 SELECT      u1.user_id AS u1_user_id,
-            u2.user_id AS u2_user_id
-ORDER BY    u1_user_id,
-            u2_user_id;
+            u2.user_id AS u2_user_id,
+            u1.friends AS friends,
+            fw.user_id AS fw_user_id,
+            fw.friend AS fw_friend
+ORDER BY    u1_user_id, u2_user_id, fw_user_id;

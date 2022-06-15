@@ -26,12 +26,24 @@ import org.apache.asterix.compiler.provider.IRuleSetFactory;
 import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.algebricks.core.rewriter.base.AbstractRuleController;
 import org.apache.hyracks.algebricks.core.rewriter.base.IAlgebraicRewriteRule;
+import org.apache.hyracks.algebricks.core.rewriter.base.IRuleSetKind;
 
 public class GraphixRuleSetFactory implements IRuleSetFactory {
     @Override
     public List<Pair<AbstractRuleController, List<IAlgebraicRewriteRule>>> getLogicalRewrites(
             ICcApplicationContext appCtx) {
         return DefaultRuleSetFactory.buildLogical(appCtx);
+    }
+
+    @Override
+    public List<Pair<AbstractRuleController, List<IAlgebraicRewriteRule>>> getLogicalRewrites(IRuleSetKind ruleSetKind,
+            ICcApplicationContext appCtx) {
+        if (ruleSetKind == RuleSetKind.SAMPLING) {
+            return DefaultRuleSetFactory.buildLogicalSampling();
+
+        } else {
+            throw new IllegalArgumentException(String.valueOf(ruleSetKind));
+        }
     }
 
     @Override

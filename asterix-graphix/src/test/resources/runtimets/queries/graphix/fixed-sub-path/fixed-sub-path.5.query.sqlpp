@@ -29,15 +29,9 @@ FROM GRAPH  VERTEX (:User)
                                 F.friend AS friend )
 MATCH       (u2:User)<-[fw1:FRIENDS_WITH{2,2}]-(u1:User),
             (u3:User)<-[fw2:FRIENDS_WITH{2,2}]-(u2)
-UNNEST      fw1 AS fw1EdgeRecord
-UNNEST      fw2 AS fw2EdgeRecord
-LET         fw1_left_vertex = VERTEX_KEY(fw1EdgeRecord.LeftVertex),
-            fw2_left_vertex = VERTEX_KEY(fw2EdgeRecord.LeftVertex)
 SELECT      u1.user_id AS u1_user_id,
-            fw1_left_vertex,
             u2.user_id AS u2_user_id,
-            fw2_left_vertex,
             u3.user_id AS u3_user_id,
-            HOP_COUNT(fw1) AS fw1_hops,
-            HOP_COUNT(fw2) AS fw2_hops
-ORDER BY    u1, fw1_left_vertex, u2, fw2_left_vertex, u3;
+            LEN(fw1.Edges) AS fw1_hops,
+            LEN(fw2.Edges) AS fw2_hops
+ORDER BY    u1, u2, u3;

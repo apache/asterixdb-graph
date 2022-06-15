@@ -36,9 +36,9 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  */
 public class EdgePatternExpr extends AbstractExpression {
     private final List<VertexPatternExpr> internalVertices;
-    private final VertexPatternExpr leftVertex;
-    private final VertexPatternExpr rightVertex;
     private final EdgeDescriptor edgeDescriptor;
+    private VertexPatternExpr leftVertex;
+    private VertexPatternExpr rightVertex;
 
     public EdgePatternExpr(VertexPatternExpr leftVertex, VertexPatternExpr rightVertex, EdgeDescriptor edgeDescriptor) {
         this.leftVertex = Objects.requireNonNull(leftVertex);
@@ -70,9 +70,36 @@ public class EdgePatternExpr extends AbstractExpression {
         return internalVertices;
     }
 
+    public void setLeftVertex(VertexPatternExpr leftVertex) {
+        this.leftVertex = leftVertex;
+    }
+
+    public void setRightVertex(VertexPatternExpr rightVertex) {
+        this.rightVertex = rightVertex;
+    }
+
     public void replaceInternalVertices(List<VertexPatternExpr> internalVertices) {
         this.internalVertices.clear();
         this.internalVertices.addAll(internalVertices);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(leftVertex, rightVertex, edgeDescriptor, internalVertices);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof EdgePatternExpr)) {
+            return false;
+        }
+        EdgePatternExpr that = (EdgePatternExpr) object;
+        return Objects.equals(this.leftVertex, that.leftVertex) && Objects.equals(this.rightVertex, that.rightVertex)
+                && Objects.equals(this.edgeDescriptor, that.edgeDescriptor)
+                && Objects.equals(this.internalVertices, that.internalVertices);
     }
 
     @Override

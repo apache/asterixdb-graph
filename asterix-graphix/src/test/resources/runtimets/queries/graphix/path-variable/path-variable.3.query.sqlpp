@@ -22,7 +22,7 @@ FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
                    AS Yelp.Users
 MATCH       (u) AS p
-UNNEST      p AS edgeRecord
-SELECT      PATH_HOP_COUNT(p) AS pathLength,
-            edgeRecord
-ORDER BY    u.user_id, VERTEX_KEY(edgeRecord.LeftVertex);
+UNNEST      p.Vertices AS pathVertex
+SELECT      LEN(p.Edges) AS pathLength,
+            pathVertex
+ORDER BY    u.user_id;

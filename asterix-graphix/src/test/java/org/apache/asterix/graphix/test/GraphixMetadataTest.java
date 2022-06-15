@@ -34,7 +34,7 @@ import org.junit.runners.Parameterized.Parameters;
 public class GraphixMetadataTest {
     private static final String PATH_ACTUAL = FileUtil.joinPath("target", "mdtest");
     private static final String PATH_BASE = FileUtil.joinPath("src", "test", "resources", "metadatats");
-    private static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "main", "resources", "cc.conf");
+    private static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "test", "resources", "cc.conf");
 
     private static final TestExecutor testExecutor = new TestExecutor();
     private static final GraphixIntegrationUtil integrationUtil = new GraphixIntegrationUtil();

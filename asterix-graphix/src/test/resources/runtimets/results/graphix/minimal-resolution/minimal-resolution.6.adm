@@ -1,8 +1,0 @@
-{ "source_user_id": 1, "dest_user_id": 2, "e_user_id": 1, "e_friend": 2 }
-{ "source_user_id": 3, "dest_user_id": 2, "e_user_id": 3, "e_friend": 2 }
-{ "source_user_id": 4, "dest_user_id": 2, "e_user_id": 4, "e_friend": 2 }
-{ "source_review_id": "A", "dest_user_id": 1, "e_user_id": 1, "e_review_id": "A" }
-{ "source_review_id": "B", "dest_user_id": 1, "e_user_id": 1, "e_review_id": "B" }
-{ "source_review_id": "C", "dest_user_id": 2, "e_user_id": 2, "e_review_id": "C" }
-{ "source_review_id": "D", "dest_user_id": 3, "e_user_id": 3, "e_review_id": "D" }
-{ "source_review_id": "E", "dest_user_id": 4, "e_user_id": 4, "e_review_id": "E" }

@@ -89,9 +89,8 @@ public class GraphConstructor extends AbstractExpression {
     /**
      * A vertex constructor (not be confused with a query vertex) is composed of the following:
      * - An AST containing the vertex body expression, as well as the raw body string itself.
-     * - A single label that groups the aforementioned body with other vertices of the same label.
-     * - A list of primary key fields, which must be the same as other vertices of the same label. These fields are
-     * used in the JOIN clause with edges.
+     * - A single vertex label that uniquely identifies the vertex.
+     * - A list of primary key fields, used in the JOIN clause with edges.
      */
     public static class VertexConstructor extends AbstractLangExpression {
         private final List<Integer> primaryKeySourceIndicators;
@@ -162,13 +161,11 @@ public class GraphConstructor extends AbstractExpression {
     /**
      * An edge constructor (not be confused with a query edge) is composed of the following:
      * - An AST containing the edge body expression, as well as the raw body string itself.
-     * - A single edge label that groups the aforementioned body with other edges of the same label.
+     * - A single edge label that uniquely identifies the edge.
      * - A single label that denotes the source vertices of this edge, as well as another label that denotes the
      * destination vertices of this edge.
-     * - A list of source key fields, which must be the same as other edges of the same label. These fields are used in
-     * the JOIN clause with the corresponding source vertices.
-     * - A list of destination key fields, which must be the same as other edges of the same label. These fields are
-     * used in the JOIN clause with the corresponding destination vertices.
+     * - A list of source key fields, used in the JOIN clause with the corresponding source vertices.
+     * - A list of destination key fields, used in the JOIN clause with the corresponding destination vertices.
      */
     public static class EdgeConstructor extends AbstractLangExpression {
         private final List<Integer> destinationKeySourceIndicators;

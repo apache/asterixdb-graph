@@ -20,34 +20,17 @@
 // Test each path function (edges, hop-count, labels, vertices).
 FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
-                   AS ( FROM      Yelp.Users U
-                        SELECT    VALUE U
-                        ORDER BY  U.user_id
-                        LIMIT     2 ),
-            VERTEX (:Review)
-                   PRIMARY KEY (review_id)
-                   AS ( FROM      Yelp.Reviews R
-                        SELECT    VALUE R
-                        ORDER BY  R.review_id
-                        LIMIT     2 ),
+                   AS Yelp.Users,
             EDGE   (:User)-[:FRIENDS_WITH]->(:User)
                    SOURCE KEY (user_id)
                    DESTINATION KEY (friend)
                    AS ( FROM    Yelp.Friends F
                         SELECT  F.user_id AS user_id,
-                                F.friend AS friend ),
-            EDGE   (:User)<-[:MADE_BY]-(:Review)
-                   SOURCE KEY (review_id)
-                   DESTINATION KEY (user_id)
-                   AS ( FROM    Yelp.Reviews R
-                        SELECT  R.review_id,
-                                R.user_id )
-MATCH       (n1)-[e:{1,1}]-(n2)-(n3) AS p
+                                F.friend AS friend )
+MATCH       (n1)-[e:{1,2}]->(n2)->(n3) AS p
 SELECT      EDGES(p) AS pEdges,
             EDGES(e) AS eEdges,
             HOP_COUNT(p) AS pHopCount,
-            LABELS(p) AS pLabels,
-            LABELS(e) AS eLabels,
             VERTICES(p) AS pVertices,
             VERTICES(e) AS eVertices
 ORDER BY    n1, e, n2, n3;

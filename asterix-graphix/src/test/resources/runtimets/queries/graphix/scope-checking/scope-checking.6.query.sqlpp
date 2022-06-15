@@ -39,4 +39,6 @@ SELECT      myUser1.user_id AS u1_user_id,
               SELECT    VALUE ( FROM    gi.pathVertices AS pv
                                 SELECT  VALUE pv.user_id )
               ORDER BY  gi.pathHopCount ASC
-              LIMIT     1 )[0] AS shortestPath;
+              LIMIT     1 )[0] AS shortestPath
+ORDER BY    myUser1,
+            myUser2;

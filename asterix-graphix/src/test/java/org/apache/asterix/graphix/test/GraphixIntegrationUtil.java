@@ -23,7 +23,7 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class GraphixIntegrationUtil extends AsterixHyracksIntegrationUtil {
     private static final String FILE_DEFAULT_CONF =
-            FileUtil.joinPath("asterixdb", "asterix-opt", "asterix-graphix", "src", "main", "resources", "cc.conf");
+            FileUtil.joinPath("asterixdb", "asterix-opt", "asterix-graphix", "src", "test", "resources", "cc.conf");
 
     public static void main(String[] args) {
         TestUtils.redirectLoggingToConsole();

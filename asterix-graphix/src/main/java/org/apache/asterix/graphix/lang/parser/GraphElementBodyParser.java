@@ -22,40 +22,28 @@ import java.io.StringReader;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
-import org.apache.asterix.graphix.metadata.entity.schema.Element;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
+import org.apache.asterix.graphix.metadata.entity.schema.IElement;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
 public final class GraphElementBodyParser {
     // Just a wrapper for the parseGraphElementBody method.
-    public static GraphElementDecl parse(Element element, GraphixParserFactory parserFactory,
+    public static GraphElementDeclaration parse(IElement element, GraphixParserFactory parserFactory,
             IWarningCollector warningCollector) throws CompilationException {
-        GraphElementDecl graphElementDecl = null;
-        for (String definition : element.getDefinitionBodies()) {
-            // Parse our the definition.
-            GraphixParser parser = (GraphixParser) parserFactory.createParser(new StringReader(definition));
-            GraphElementDecl parsedElementDecl;
-            try {
-                parsedElementDecl = parser.parseGraphElementBody(element.getIdentifier());
+        String definitionBody = element.getDefinitionBody();
+        GraphixParser parser = (GraphixParser) parserFactory.createParser(new StringReader(definitionBody));
+        GraphElementDeclaration parsedElementDecl;
+        try {
+            parsedElementDecl = parser.parseGraphElementBody(element.getIdentifier());
 
-            } catch (CompilationException e) {
-                throw new CompilationException(ErrorCode.COMPILATION_ERROR,
-                        "Bad definition for a graph element: " + e.getMessage());
-            }
-
-            // Accumulate the element bodies.
-            if (graphElementDecl == null) {
-                graphElementDecl = parsedElementDecl;
-
-            } else {
-                graphElementDecl.getBodies().add(parsedElementDecl.getBodies().get(0));
-            }
-
-            // Gather any warnings.
-            if (warningCollector != null) {
-                parser.getWarnings(warningCollector);
-            }
+        } catch (CompilationException e) {
+            throw new CompilationException(ErrorCode.COMPILATION_ERROR,
+                    "Bad definition for a graph element: " + e.getMessage());
         }
-        return graphElementDecl;
+
+        if (warningCollector != null) {
+            parser.getWarnings(warningCollector);
+        }
+        return parsedElementDecl;
     }
 }

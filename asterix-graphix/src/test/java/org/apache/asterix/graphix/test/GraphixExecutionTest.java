@@ -38,7 +38,7 @@ import org.junit.runners.Parameterized.Parameters;
 public class GraphixExecutionTest {
     protected static final String PATH_ACTUAL = FileUtil.joinPath("target", "rttest");
     protected static final String PATH_BASE = FileUtil.joinPath("src", "test", "resources", "runtimets");
-    protected static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "main", "resources", "cc.conf");
+    protected static final String FILE_TEST_CONFIG = FileUtil.joinPath("src", "test", "resources", "cc.conf");
     private static final String TEST_SUITE_FILE = "testsuite.xml";
     private static final String ONLY_SUITE_FILE = "only.xml";
 

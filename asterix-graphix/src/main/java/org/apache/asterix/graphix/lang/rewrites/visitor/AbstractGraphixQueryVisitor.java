@@ -27,8 +27,9 @@ import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.lang.common.base.AbstractClause;
 import org.apache.asterix.lang.common.base.Expression;
@@ -37,7 +38,7 @@ import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
 import org.apache.asterix.lang.sqlpp.clause.SelectBlock;
 import org.apache.asterix.lang.sqlpp.visitor.base.AbstractSqlppSimpleExpressionVisitor;
 
-public class AbstractGraphixQueryVisitor extends AbstractSqlppSimpleExpressionVisitor
+public abstract class AbstractGraphixQueryVisitor extends AbstractSqlppSimpleExpressionVisitor
         implements IGraphixLangVisitor<Expression, ILangExpression> {
     @Override
     public Expression visit(GraphConstructor gc, ILangExpression arg) throws CompilationException {
@@ -152,7 +153,12 @@ public class AbstractGraphixQueryVisitor extends AbstractSqlppSimpleExpressionVi
     }
 
     @Override
-    public Expression visit(GraphElementDecl gel, ILangExpression arg) throws CompilationException {
+    public Expression visit(GraphElementDeclaration gel, ILangExpression arg) throws CompilationException {
+        return null;
+    }
+
+    @Override
+    public Expression visit(DeclareGraphStatement dgs, ILangExpression arg) throws CompilationException {
         return null;
     }
 

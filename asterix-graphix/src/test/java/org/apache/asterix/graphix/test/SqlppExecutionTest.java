@@ -44,7 +44,7 @@ public class SqlppExecutionTest {
 
     // We should be in the "asterix-app" directory.
     protected static final String FILE_TEST_CONFIG =
-            FileUtil.joinPath("..", "asterix-opt", "asterix-graphix", "src", "main", "resources", "cc.conf");
+            FileUtil.joinPath("..", "asterix-opt", "asterix-graphix", "src", "test", "resources", "cc.conf");
 
     private static final GraphixIntegrationUtil integrationUtil = new GraphixIntegrationUtil();
     private static final TestExecutor testExecutor = new TestExecutor();

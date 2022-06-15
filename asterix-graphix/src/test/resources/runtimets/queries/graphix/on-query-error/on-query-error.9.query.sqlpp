@@ -23,8 +23,8 @@ FROM GRAPH  VERTEX  (:Vertex1)
                     PRIMARY KEY (_id)
                     AS GenericDataset,
             VERTEX  (:Vertex1)
-                    PRIMARY KEY (_other_id)
-                    AS GenericDataset,
+                    PRIMARY KEY (_id)
+                    AS ( FROM GenericDataset SELECT * ),
             EDGE    (:Vertex1)-[:EDGE_1]->(:Vertex1)
                     SOURCE KEY (_id)
                     DESTINATION KEY (_to_id)

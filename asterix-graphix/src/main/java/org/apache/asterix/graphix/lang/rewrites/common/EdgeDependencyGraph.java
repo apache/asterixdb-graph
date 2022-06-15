@@ -19,10 +19,12 @@
 package org.apache.asterix.graphix.lang.rewrites.common;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,8 +37,6 @@ import org.apache.asterix.lang.common.struct.Identifier;
  * graphs (represented as an adjacency list). Ideally, we want to return the smallest set of Hamilton
  * {@link EdgePatternExpr} paths, but this is an NP-hard problem. Instead, we find the **first** set of paths that
  * visit each {@link EdgePatternExpr} once. This inner-order is dependent on the order of the adjacency map iterators.
- *
- * @see org.apache.asterix.graphix.lang.rewrites.visitor.ElementAnalysisVisitor
  */
 public class EdgeDependencyGraph implements Iterable<Iterable<EdgePatternExpr>> {
     private final List<Map<Identifier, List<Identifier>>> adjacencyMaps;
@@ -48,54 +48,84 @@ public class EdgeDependencyGraph implements Iterable<Iterable<EdgePatternExpr>> 
         this.edgePatternMap = edgePatternMap;
     }
 
-    private Iterator<EdgePatternExpr> buildEdgeOrdering(Map<Identifier, List<Identifier>> adjacencyMap) {
-        Set<Identifier> visitedSet = new HashSet<>();
-        Deque<Identifier> edgeStack = new ArrayDeque<>();
-
-        if (!adjacencyMap.entrySet().isEmpty()) {
-            // We start with the first inserted edge into our graph.
-            Iterator<Map.Entry<Identifier, List<Identifier>>> adjacencyMapIterator = adjacencyMap.entrySet().iterator();
-            Map.Entry<Identifier, List<Identifier>> seedEdge = adjacencyMapIterator.next();
-            edgeStack.addFirst(seedEdge.getKey());
-            edgeStack.addAll(seedEdge.getValue());
-
-            // Continue until all entries in our adjacency map have been inserted.
-            while (adjacencyMapIterator.hasNext()) {
-                Map.Entry<Identifier, List<Identifier>> followingEdge = adjacencyMapIterator.next();
-                for (Identifier followingEdgeDependent : followingEdge.getValue()) {
-                    if (!edgeStack.contains(followingEdgeDependent)) {
-                        edgeStack.addLast(followingEdgeDependent);
-                    }
-                }
-            }
-
-            return new Iterator<>() {
-                @Override
-                public boolean hasNext() {
-                    // We are done once we have visited every node.
-                    return visitedSet.size() != adjacencyMap.size();
-                }
-
-                @Override
-                public EdgePatternExpr next() {
-                    Identifier edgeIdentifier = edgeStack.removeFirst();
-                    for (Identifier dependency : adjacencyMap.get(edgeIdentifier)) {
-                        if (!visitedSet.contains(dependency)) {
-                            edgeStack.push(dependency);
-                        }
-                    }
-                    visitedSet.add(edgeIdentifier);
-                    return edgePatternMap.get(edgeIdentifier);
-                }
-            };
-
-        } else {
-            return Collections.emptyIterator();
-        }
-    }
-
     @Override
     public Iterator<Iterable<EdgePatternExpr>> iterator() {
-        return adjacencyMaps.stream().map(m -> (Iterable<EdgePatternExpr>) () -> buildEdgeOrdering(m)).iterator();
+        List<Iterable<EdgePatternExpr>> edgePatternIterables = new ArrayList<>();
+        Set<Identifier> globalVisitedSet = new HashSet<>();
+
+        for (Map<Identifier, List<Identifier>> adjacencyMap : adjacencyMaps) {
+            Deque<Identifier> edgeStack = new ArrayDeque<>();
+            Set<Identifier> localVisitedSet = new HashSet<>();
+
+            if (!adjacencyMap.entrySet().isEmpty()) {
+                if (globalVisitedSet.isEmpty()) {
+                    // We start with the first inserted edge inserted into our graph, and continue from there.
+                    Iterator<Map.Entry<Identifier, List<Identifier>>> mapIterator = adjacencyMap.entrySet().iterator();
+                    Map.Entry<Identifier, List<Identifier>> seedEdge = mapIterator.next();
+                    edgeStack.addFirst(seedEdge.getKey());
+                    edgeStack.addAll(seedEdge.getValue());
+                    while (mapIterator.hasNext()) {
+                        Map.Entry<Identifier, List<Identifier>> followingEdge = mapIterator.next();
+                        for (Identifier followingEdgeDependent : followingEdge.getValue()) {
+                            if (!edgeStack.contains(followingEdgeDependent)) {
+                                edgeStack.addLast(followingEdgeDependent);
+                            }
+                        }
+                    }
+
+                } else {
+                    // This is not our first pass. Find a connecting edge to seed our stack.
+                    Set<Identifier> disconnectedExploredEdgeSet = new LinkedHashSet<>();
+                    for (Map.Entry<Identifier, List<Identifier>> workingEdge : adjacencyMap.entrySet()) {
+                        for (Identifier workingEdgeDependent : workingEdge.getValue()) {
+                            if (globalVisitedSet.contains(workingEdgeDependent) && edgeStack.isEmpty()) {
+                                edgeStack.addFirst(workingEdgeDependent);
+                                localVisitedSet.add(workingEdgeDependent);
+
+                            } else if (!globalVisitedSet.contains(workingEdgeDependent)) {
+                                disconnectedExploredEdgeSet.add(workingEdgeDependent);
+
+                            } else {
+                                localVisitedSet.add(workingEdgeDependent);
+                            }
+                        }
+                        if (workingEdge.getValue().isEmpty() && globalVisitedSet.contains(workingEdge.getKey())) {
+                            localVisitedSet.add(workingEdge.getKey());
+
+                        } else if (workingEdge.getValue().isEmpty()) {
+                            disconnectedExploredEdgeSet.add(workingEdge.getKey());
+                        }
+                    }
+                    disconnectedExploredEdgeSet.forEach(edgeStack::addLast);
+                }
+
+                // Build our iterable.
+                globalVisitedSet.addAll(edgeStack);
+                edgePatternIterables.add(() -> new Iterator<>() {
+                    @Override
+                    public boolean hasNext() {
+                        // We are done once we have visited every node.
+                        return localVisitedSet.size() != adjacencyMap.size();
+                    }
+
+                    @Override
+                    public EdgePatternExpr next() {
+                        Identifier edgeIdentifier = edgeStack.removeFirst();
+                        for (Identifier dependency : adjacencyMap.get(edgeIdentifier)) {
+                            if (!localVisitedSet.contains(dependency)) {
+                                edgeStack.addFirst(dependency);
+                            }
+                        }
+                        localVisitedSet.add(edgeIdentifier);
+                        return edgePatternMap.get(edgeIdentifier);
+                    }
+                });
+
+            } else {
+                edgePatternIterables.add(Collections.emptyList());
+            }
+        }
+
+        return edgePatternIterables.iterator();
     }
 }

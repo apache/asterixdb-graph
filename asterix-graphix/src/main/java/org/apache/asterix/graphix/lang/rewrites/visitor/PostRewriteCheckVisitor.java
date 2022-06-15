@@ -28,8 +28,9 @@ import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
 import org.apache.asterix.lang.common.clause.LetClause;
@@ -61,12 +62,17 @@ public class PostRewriteCheckVisitor extends AbstractSqlppSimpleExpressionVisito
     }
 
     @Override
+    public Expression visit(DeclareGraphStatement dgs, ILangExpression arg) throws CompilationException {
+        return throwException(dgs);
+    }
+
+    @Override
     public Expression visit(CreateGraphStatement cgs, ILangExpression arg) throws CompilationException {
         return throwException(cgs);
     }
 
     @Override
-    public Expression visit(GraphElementDecl gel, ILangExpression arg) throws CompilationException {
+    public Expression visit(GraphElementDeclaration gel, ILangExpression arg) throws CompilationException {
         return throwException(gel);
     }
 

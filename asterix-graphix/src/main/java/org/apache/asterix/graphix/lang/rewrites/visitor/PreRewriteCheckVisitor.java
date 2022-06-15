@@ -18,6 +18,8 @@
  */
 package org.apache.asterix.graphix.lang.rewrites.visitor;
 
+import static org.apache.asterix.graphix.extension.GraphixMetadataExtension.getGraph;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,12 +29,13 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
+import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 import org.apache.asterix.graphix.metadata.entity.schema.Graph;
@@ -40,7 +43,6 @@ import org.apache.asterix.graphix.metadata.entity.schema.Schema;
 import org.apache.asterix.graphix.metadata.entity.schema.Vertex;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
-import org.apache.asterix.lang.common.rewrites.LangRewritingContext;
 import org.apache.asterix.lang.common.struct.Identifier;
 import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
 import org.apache.asterix.metadata.declared.MetadataProvider;
@@ -54,9 +56,10 @@ import org.apache.hyracks.algebricks.common.exceptions.AlgebricksException;
  * 4. A vertex label exists in the context of the vertex's {@link FromGraphClause}.
  * 5. The minimum hops and maximum hops of a sub-path is not equal to zero.
  * 6. The maximum hops of a sub-path is greater than or equal to the minimum hops of the same sub-path.
- * 7. An anonymous graph passes the same validation that a named graph does.
+ * 7. An anonymous / declared graph passes the same validation that a named graph does.
  */
 public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
+    private final Map<GraphIdentifier, DeclareGraphStatement> declaredGraphs;
     private final MetadataProvider metadataProvider;
 
     // Build new environments on each FROM-GRAPH-CLAUSE visit.
@@ -69,8 +72,9 @@ public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
 
     private final Map<ILangExpression, PreRewriteCheckEnvironment> environmentMap = new HashMap<>();
 
-    public PreRewriteCheckVisitor(LangRewritingContext langRewritingContext) {
-        this.metadataProvider = langRewritingContext.getMetadataProvider();
+    public PreRewriteCheckVisitor(GraphixRewritingContext graphixRewritingContext) {
+        this.declaredGraphs = graphixRewritingContext.getDeclaredGraphs();
+        this.metadataProvider = graphixRewritingContext.getMetadataProvider();
     }
 
     @Override
@@ -82,13 +86,13 @@ public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
         // Perform the same validation we do for named graphs-- but don't build the schema object.
         for (GraphConstructor.VertexConstructor vertex : graphConstructor.getVertexElements()) {
             schemaBuilder.addVertex(vertex.getLabel(), vertex.getPrimaryKeyFields(), vertex.getDefinition());
-            if (schemaBuilder.getLastError() == Schema.Builder.Error.CONFLICTING_PRIMARY_KEY) {
+            if (schemaBuilder.getLastError() == Schema.Builder.Error.VERTEX_LABEL_CONFLICT) {
                 throw new CompilationException(ErrorCode.COMPILATION_ERROR, vertex.getSourceLocation(),
-                        "Conflicting primary keys for vertices with label " + vertex.getLabel());
+                        "Conflicting vertex label found: " + vertex.getLabel());
 
             } else if (schemaBuilder.getLastError() != Schema.Builder.Error.NO_ERROR) {
                 throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, vertex.getSourceLocation(),
-                        "Constructor vertex was not returned, but the error is not a conflicting primary key!");
+                        "Constructor vertex was not returned, but the error is not a conflicting vertex label!");
             }
         }
         for (GraphConstructor.EdgeConstructor edge : graphConstructor.getEdgeElements()) {
@@ -108,10 +112,9 @@ public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
                             "Destination vertex " + edge.getDestinationLabel() + " not found in the edge "
                                     + edge.getEdgeLabel() + ".");
 
-                case CONFLICTING_SOURCE_KEY:
-                case CONFLICTING_DESTINATION_KEY:
+                case EDGE_LABEL_CONFLICT:
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, edge.getSourceLocation(),
-                            "Conflicting edge with the same label found: " + edge.getEdgeLabel());
+                            "Conflicting edge label found: " + edge.getEdgeLabel());
 
                 default:
                     throw new CompilationException(ErrorCode.COMPILATION_ILLEGAL_STATE, edge.getSourceLocation(),
@@ -126,49 +129,55 @@ public class PreRewriteCheckVisitor extends AbstractGraphixQueryVisitor {
         environmentMap.put(fromGraphClause, new PreRewriteCheckEnvironment());
 
         // Establish the vertex and edge labels associated with this FROM-GRAPH-CLAUSE.
-        if (fromGraphClause.getGraphConstructor() == null) {
+        GraphConstructor graphConstructor = fromGraphClause.getGraphConstructor();
+        if (graphConstructor == null) {
             DataverseName dataverseName = (fromGraphClause.getDataverseName() == null)
                     ? metadataProvider.getDefaultDataverseName() : fromGraphClause.getDataverseName();
             Identifier graphName = fromGraphClause.getGraphName();
 
-            // Fetch the graph from our metadata.
-            try {
-                Graph graphFromMetadata = GraphixMetadataExtension.getGraph(metadataProvider.getMetadataTxnContext(),
-                        dataverseName, graphName.getValue());
-                if (graphFromMetadata == null) {
+            // First, see if we can fetch the graph constructor from our declared graphs.
+            GraphIdentifier graphIdentifier = new GraphIdentifier(dataverseName, graphName.getValue());
+            DeclareGraphStatement declaredGraph = declaredGraphs.get(graphIdentifier);
+            if (declaredGraph != null) {
+                graphConstructor = declaredGraph.getGraphConstructor();
+
+            } else {
+                // Otherwise, fetch the graph from our metadata.
+                try {
+                    Graph graphFromMetadata =
+                            getGraph(metadataProvider.getMetadataTxnContext(), dataverseName, graphName.getValue());
+                    if (graphFromMetadata == null) {
+                        throw new CompilationException(ErrorCode.COMPILATION_ERROR, fromGraphClause.getSourceLocation(),
+                                "Graph " + graphName.getValue() + " does not exist.");
+
+                    } else {
+                        graphFromMetadata.getGraphSchema().getVertices().stream().map(Vertex::getLabel)
+                                .forEach(environmentMap.get(fromGraphClause).vertexLabels::add);
+                        graphFromMetadata.getGraphSchema().getEdges().forEach(e -> {
+                            environmentMap.get(fromGraphClause).vertexLabels.add(e.getSourceLabel());
+                            environmentMap.get(fromGraphClause).vertexLabels.add(e.getDestinationLabel());
+                            environmentMap.get(fromGraphClause).edgeLabels.add(e.getLabel());
+                        });
+                    }
+
+                } catch (AlgebricksException e) {
                     throw new CompilationException(ErrorCode.COMPILATION_ERROR, fromGraphClause.getSourceLocation(),
                             "Graph " + graphName.getValue() + " does not exist.");
-
-                } else {
-                    graphFromMetadata.getGraphSchema().getVertices().stream().map(Vertex::getLabel)
-                            .forEach(environmentMap.get(fromGraphClause).vertexLabels::add);
-                    graphFromMetadata.getGraphSchema().getEdges().forEach(e -> {
-                        environmentMap.get(fromGraphClause).vertexLabels.add(e.getSourceLabel());
-                        environmentMap.get(fromGraphClause).vertexLabels.add(e.getDestinationLabel());
-                        environmentMap.get(fromGraphClause).edgeLabels.add(e.getLabel());
-                    });
                 }
-
-            } catch (AlgebricksException e) {
-                throw new CompilationException(ErrorCode.COMPILATION_ERROR, fromGraphClause.getSourceLocation(),
-                        "Graph " + graphName.getValue() + " does not exist.");
             }
-
-        } else {
-            fromGraphClause.getGraphConstructor().getVertexElements().stream()
-                    .map(GraphConstructor.VertexConstructor::getLabel)
+        }
+        if (graphConstructor != null) {
+            graphConstructor.getVertexElements().stream().map(GraphConstructor.VertexConstructor::getLabel)
                     .forEach(environmentMap.get(fromGraphClause).vertexLabels::add);
-            fromGraphClause.getGraphConstructor().getEdgeElements().forEach(e -> {
+            graphConstructor.getEdgeElements().forEach(e -> {
                 environmentMap.get(fromGraphClause).vertexLabels.add(e.getSourceLabel());
                 environmentMap.get(fromGraphClause).vertexLabels.add(e.getDestinationLabel());
                 environmentMap.get(fromGraphClause).edgeLabels.add(e.getEdgeLabel());
             });
+            graphConstructor.accept(this, arg);
         }
 
         // We need to pass our FROM-GRAPH-CLAUSE to our MATCH-CLAUSE.
-        if (fromGraphClause.getGraphConstructor() != null) {
-            fromGraphClause.getGraphConstructor().accept(this, arg);
-        }
         for (MatchClause matchClause : fromGraphClause.getMatchClauses()) {
             matchClause.accept(this, fromGraphClause);
         }

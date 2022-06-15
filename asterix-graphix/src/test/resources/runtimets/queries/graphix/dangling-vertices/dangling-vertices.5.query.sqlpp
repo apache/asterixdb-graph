@@ -17,6 +17,8 @@
  * under the License.
  */
 
+-- param max-warnings:string=2
+
 // There are two dangling vertices of different labels, and zero edges.
 FROM GRAPH  Yelp.YelpGraph
 MATCH       (u:User), (r:Review)

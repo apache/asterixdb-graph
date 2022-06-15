@@ -28,10 +28,8 @@ FROM GRAPH  VERTEX (:User)
                         WHERE   F.friend_group = "A"
                         SELECT  F.user_id, F.friend )
 MATCH       (u)-[e1:{1,2}]-(v) AS p
-UNNEST      p AS edgeRecord
-SELECT      PATH_HOP_COUNT(p) AS pathLength,
-            edgeRecord
-ORDER BY    u.user_id,
-            v.user_id,
-            VERTEX_KEY(edgeRecord.LeftVertex),
-            SOURCE_KEY(edgeRecord.`Edge`);
+SELECT      LEN(p.Edges) AS pathLength,
+            u.user_id AS u_user_id,
+            v.user_id AS v_user_id
+ORDER BY    u_user_id,
+            v_user_id;

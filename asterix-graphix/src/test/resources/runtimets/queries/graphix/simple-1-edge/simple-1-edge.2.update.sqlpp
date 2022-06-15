@@ -33,10 +33,10 @@ INSERT INTO       Friends [
 ];
 
 INSERT INTO       Reviews [
-  { "review_id": "A", "user_id": 1 },
-  { "review_id": "B", "user_id": 1 },
-  { "review_id": "C", "user_id": 2 },
-  { "review_id": "D", "user_id": 3 },
-  { "review_id": "E", "user_id": 4 },
-  { "review_id": "F", "user_id": 5 }
+  { "review_id": "A", "review_user_id": 1 },
+  { "review_id": "B", "review_user_id": 1 },
+  { "review_id": "C", "review_user_id": 2 },
+  { "review_id": "D", "review_user_id": 3 },
+  { "review_id": "E", "review_user_id": 4 },
+  { "review_id": "F", "review_user_id": 5 }
 ];

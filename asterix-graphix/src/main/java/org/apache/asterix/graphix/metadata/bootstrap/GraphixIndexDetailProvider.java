@@ -37,7 +37,7 @@ import org.apache.asterix.om.types.IAType;
 /**
  * Provide detail about two metadata extension indexes: Graph and GraphDependency.
  */
-public class GraphixIndexDetailProvider {
+public final class GraphixIndexDetailProvider {
     public static IGraphixIndexDetail<Graph> getGraphIndexDetail() {
         return graphIndexDetail;
     }

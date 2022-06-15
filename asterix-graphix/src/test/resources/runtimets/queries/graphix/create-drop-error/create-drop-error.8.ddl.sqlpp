@@ -17,7 +17,7 @@
  * under the License.
  */
 
-// Verify that vertices w/ the same label cannot have conflicting primary keys.
+// Verify that no two vertices can have the same label.
 
 DROP DATAVERSE    TestDataverse IF EXISTS;
 CREATE DATAVERSE  TestDataverse;
@@ -34,6 +34,6 @@ VERTEX            (:Vertex1)
                   PRIMARY KEY (_id)
                   AS GenericDataset,
 VERTEX            (:Vertex1)
-                  PRIMARY KEY (_other_id)
+                  PRIMARY KEY (_id)
                   AS ( FROM GenericDataset
                        SELECT VALUE { "_other_id": _other_id } );

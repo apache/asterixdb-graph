@@ -59,11 +59,11 @@ public class GraphSelectBlock extends SelectBlock {
 
     @Override
     public <R, T> R accept(ILangVisitor<R, T> visitor, T arg) throws CompilationException {
-        if (hasFromGraphClause()) {
-            return ((IGraphixLangVisitor<R, T>) visitor).visit(this, arg);
+        if (hasFromClause()) {
+            return ((ISqlppVisitor<R, T>) visitor).visit(this, arg);
 
         } else {
-            return ((ISqlppVisitor<R, T>) visitor).visit(this, arg);
+            return ((IGraphixLangVisitor<R, T>) visitor).visit(this, arg);
         }
     }
 

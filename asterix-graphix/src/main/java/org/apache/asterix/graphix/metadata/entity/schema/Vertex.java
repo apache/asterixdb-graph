@@ -18,10 +18,8 @@
  */
 package org.apache.asterix.graphix.metadata.entity.schema;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
@@ -29,53 +27,27 @@ import org.apache.asterix.graphix.lang.struct.ElementLabel;
 /**
  * Metadata representation of a vertex. A vertex consists of the following:
  * 1. A {@link GraphElementIdentifier}, to uniquely identify the vertex across other graph elements.
- * 2. A collection of vertex definitions, each of which consists of a primary key and a SQL++ string.
+ * 2. A list of primary key fields, associated with the definition body.
+ * 3. A SQL++ string denoting the definition body.
  */
-public class Vertex implements Element {
+public class Vertex implements IElement {
     private static final long serialVersionUID = 1L;
 
     private final GraphElementIdentifier identifier;
-    private final List<Definition> definitions;
+    private final List<List<String>> primaryKeyFieldNames;
+    private final String definitionBody;
 
     /**
      * Use {@link Schema.Builder} to build Vertex instances instead of this constructor.
      */
-    Vertex(GraphElementIdentifier identifier, Definition definition) {
+    Vertex(GraphElementIdentifier identifier, List<List<String>> primaryKeyFieldNames, String definitionBody) {
         this.identifier = Objects.requireNonNull(identifier);
-        this.definitions = new ArrayList<>();
-        this.definitions.add(Objects.requireNonNull(definition));
+        this.primaryKeyFieldNames = primaryKeyFieldNames;
+        this.definitionBody = Objects.requireNonNull(definitionBody);
     }
 
-    public static class Definition {
-        private final List<List<String>> primaryKeyFieldNames;
-        private final String definition;
-
-        Definition(List<List<String>> primaryKeyFieldNames, String definition) {
-            this.primaryKeyFieldNames = primaryKeyFieldNames;
-            this.definition = definition;
-        }
-
-        public List<List<String>> getPrimaryKeyFieldNames() {
-            return primaryKeyFieldNames;
-        }
-
-        public String getDefinition() {
-            return definition;
-        }
-
-        @Override
-        public String toString() {
-            return definition;
-        }
-    }
-
-    // A primary key is the same across all vertex definitions.
     public List<List<String>> getPrimaryKeyFieldNames() {
-        return definitions.get(0).getPrimaryKeyFieldNames();
-    }
-
-    public List<Definition> getDefinitions() {
-        return definitions;
+        return primaryKeyFieldNames;
     }
 
     @Override
@@ -89,12 +61,12 @@ public class Vertex implements Element {
     }
 
     @Override
-    public List<String> getDefinitionBodies() {
-        return definitions.stream().map(Definition::getDefinition).collect(Collectors.toList());
+    public String getDefinitionBody() {
+        return definitionBody;
     }
 
     @Override
     public String toString() {
-        return "(:" + getLabel() + ") AS " + String.join(",\n", getDefinitionBodies());
+        return "(:" + getLabel() + ") AS " + definitionBody;
     }
 }

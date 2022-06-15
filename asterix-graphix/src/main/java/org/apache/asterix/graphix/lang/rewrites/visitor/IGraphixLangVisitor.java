@@ -27,8 +27,9 @@ import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 public interface IGraphixLangVisitor<R, T> extends ILangVisitor<R, T> {
@@ -38,9 +39,11 @@ public interface IGraphixLangVisitor<R, T> extends ILangVisitor<R, T> {
 
     R visit(GraphConstructor.EdgeConstructor ee, T arg) throws CompilationException;
 
+    R visit(DeclareGraphStatement dgs, T arg) throws CompilationException;
+
     R visit(CreateGraphStatement cgs, T arg) throws CompilationException;
 
-    R visit(GraphElementDecl gel, T arg) throws CompilationException;
+    R visit(GraphElementDeclaration gel, T arg) throws CompilationException;
 
     R visit(GraphDropStatement gds, T arg) throws CompilationException;
 

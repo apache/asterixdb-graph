@@ -33,19 +33,16 @@ public class GraphixFunctionAliases {
         functionAliasMap.put("label", GraphixFunctionIdentifiers.ELEMENT_LABEL);
 
         // Build aliases for edge functions.
-        functionAliasMap.put("source-key", GraphixFunctionIdentifiers.EDGE_SOURCE_KEY);
-        functionAliasMap.put("dest-key", GraphixFunctionIdentifiers.EDGE_DEST_KEY);
-        functionAliasMap.put("edge-destination-key", GraphixFunctionIdentifiers.EDGE_DEST_KEY);
-        functionAliasMap.put("destination-key", GraphixFunctionIdentifiers.EDGE_DEST_KEY);
         functionAliasMap.put("dir", GraphixFunctionIdentifiers.EDGE_DIRECTION);
         functionAliasMap.put("direction", GraphixFunctionIdentifiers.EDGE_DIRECTION);
-        functionAliasMap.put("left-to-right-if", GraphixFunctionIdentifiers.EDGE_LEFT_TO_RIGHT_IF);
-        functionAliasMap.put("right-to-left-if", GraphixFunctionIdentifiers.EDGE_RIGHT_TO_LEFT_IF);
+        functionAliasMap.put("source-vertex", GraphixFunctionIdentifiers.EDGE_SOURCE_VERTEX);
+        functionAliasMap.put("dest-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
+        functionAliasMap.put("edge-destination-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
+        functionAliasMap.put("destination-vertex", GraphixFunctionIdentifiers.EDGE_DEST_VERTEX);
 
         // Build aliases for path functions.
         functionAliasMap.put("hop-count", GraphixFunctionIdentifiers.PATH_HOP_COUNT);
         functionAliasMap.put("edge-count", GraphixFunctionIdentifiers.PATH_HOP_COUNT);
-        functionAliasMap.put("labels", GraphixFunctionIdentifiers.PATH_LABELS);
         functionAliasMap.put("vertices", GraphixFunctionIdentifiers.PATH_VERTICES);
         functionAliasMap.put("edges", GraphixFunctionIdentifiers.PATH_EDGES);
     }

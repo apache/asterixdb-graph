@@ -35,7 +35,7 @@ import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
  * first, but all patterns must be matched), and LEFTOUTER (indicating that this node is optionally matched).
  * - Under isomorphism semantics, two patterns in different MATCH nodes (one pattern in a LEADING MATCH node and
  * one pattern in an INNER MATCH node) are equivalent to two patterns in a single LEADING MATCH node. See
- * {@link org.apache.asterix.graphix.lang.rewrites.lower.assembly.IsomorphismLowerAssembly} for more detail.
+ * {@link org.apache.asterix.graphix.lang.rewrites.lower.action.IsomorphismAction} for more detail.
  */
 public class MatchClause extends AbstractClause {
     private final List<PathPatternExpr> pathExpressions;

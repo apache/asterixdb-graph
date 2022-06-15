@@ -19,7 +19,6 @@
 package org.apache.asterix.graphix.metadata.entitytupletranslators;
 
 import static org.apache.asterix.graphix.metadata.bootstrap.GraphixRecordDetailProvider.FIELD_NAME_BODY;
-import static org.apache.asterix.graphix.metadata.bootstrap.GraphixRecordDetailProvider.FIELD_NAME_DEFINITIONS;
 import static org.apache.asterix.graphix.metadata.bootstrap.GraphixRecordDetailProvider.FIELD_NAME_DESTINATION_KEY;
 import static org.apache.asterix.graphix.metadata.bootstrap.GraphixRecordDetailProvider.FIELD_NAME_DESTINATION_LABEL;
 import static org.apache.asterix.graphix.metadata.bootstrap.GraphixRecordDetailProvider.FIELD_NAME_EDGES;
@@ -67,9 +66,7 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
     private static final int GRAPH_PAYLOAD_TUPLE_FIELD_INDEX = 2;
 
     // We are interested in the detail of the following records.
-    private static final IRecordTypeDetail EDEF_RECORD_DETAIL = GraphixRecordDetailProvider.getEdgeDefRecordDetail();
     private static final IRecordTypeDetail EDGE_RECORD_DETAIL = GraphixRecordDetailProvider.getEdgeRecordDetail();
-    private static final IRecordTypeDetail VDEF_RECORD_DETAIL = GraphixRecordDetailProvider.getVertexDefRecordDetail();
     private static final IRecordTypeDetail VERTEX_RECORD_DETAIL = GraphixRecordDetailProvider.getVertexRecordDetail();
     private static final IRecordTypeDetail GRAPH_RECORD_DETAIL = GraphixRecordDetailProvider.getGraphRecordDetail();
 
@@ -131,39 +128,32 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
             IAObject labelNameObj = VERTEX_RECORD_DETAIL.getObjectForField(vertex, FIELD_NAME_LABEL);
             ElementLabel vertexLabel = new ElementLabel(((AString) labelNameObj).getStringValue());
 
-            // Read in our vertex definitions.
-            IAObject definitionsObj = VERTEX_RECORD_DETAIL.getObjectForField(vertex, FIELD_NAME_DEFINITIONS);
-            IACursor definitionsCursor = ((AOrderedList) definitionsObj).getCursor();
-            while (definitionsCursor.next()) {
-                ARecord definition = (ARecord) definitionsCursor.get();
+            // Read in the primary key fields.
+            List<List<String>> primaryKeyFields = new ArrayList<>();
+            IAObject primaryKeyObj = VERTEX_RECORD_DETAIL.getObjectForField(vertex, FIELD_NAME_PRIMARY_KEY);
+            IACursor primaryKeyCursor = ((AOrderedList) primaryKeyObj).getCursor();
+            while (primaryKeyCursor.next()) {
+                IACursor nameCursor = ((AOrderedList) primaryKeyCursor.get()).getCursor();
+                primaryKeyFields.add(readNameList(nameCursor));
+            }
 
-                // Read in the primary key fields.
-                List<List<String>> primaryKeyFields = new ArrayList<>();
-                IAObject primaryKeyObj = VDEF_RECORD_DETAIL.getObjectForField(definition, FIELD_NAME_PRIMARY_KEY);
-                IACursor primaryKeyCursor = ((AOrderedList) primaryKeyObj).getCursor();
-                while (primaryKeyCursor.next()) {
-                    IACursor nameCursor = ((AOrderedList) primaryKeyCursor.get()).getCursor();
-                    primaryKeyFields.add(readNameList(nameCursor));
-                }
+            // Read in the definition body.
+            IAObject bodyObj = VERTEX_RECORD_DETAIL.getObjectForField(vertex, FIELD_NAME_BODY);
+            String definitionBody = ((AString) bodyObj).getStringValue();
 
-                // Read in the definition body.
-                IAObject bodyObj = VDEF_RECORD_DETAIL.getObjectForField(definition, FIELD_NAME_BODY);
-                String definitionBody = ((AString) bodyObj).getStringValue();
+            // Read in the vertex definition, and perform validation of the metadata record.
+            schemaBuilder.addVertex(vertexLabel, primaryKeyFields, definitionBody);
+            switch (schemaBuilder.getLastError()) {
+                case NO_ERROR:
+                    break;
 
-                // Read in the vertex definition, and perform validation of the metadata record.
-                schemaBuilder.addVertex(vertexLabel, primaryKeyFields, definitionBody);
-                switch (schemaBuilder.getLastError()) {
-                    case NO_ERROR:
-                        break;
+                case VERTEX_LABEL_CONFLICT:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR,
+                            "Conflicting vertex label found: " + vertexLabel);
 
-                    case CONFLICTING_PRIMARY_KEY:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Conflicting primary keys for vertices with label " + vertexLabel);
-
-                    default:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Constructor vertex was not returned, but the error is not a conflicting primary key!");
-                }
+                default:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR,
+                            "Constructor vertex was not returned, but the error is not a conflicting vertex label!");
             }
         }
 
@@ -185,59 +175,49 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
             IAObject sourceLabelNameObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_SOURCE_LABEL);
             ElementLabel sourceLabel = new ElementLabel(((AString) sourceLabelNameObj).getStringValue());
 
-            // Read in our edge definitions.
-            IAObject definitionsObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_DEFINITIONS);
-            IACursor definitionsCursor = ((AOrderedList) definitionsObj).getCursor();
-            while (definitionsCursor.next()) {
-                ARecord definition = (ARecord) definitionsCursor.get();
+            // Read in the source key fields.
+            List<List<String>> sourceKeyFields = new ArrayList<>();
+            IAObject sourceKeyObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_SOURCE_KEY);
+            IACursor sourceKeyCursor = ((AOrderedList) sourceKeyObj).getCursor();
+            while (sourceKeyCursor.next()) {
+                IACursor nameCursor = ((AOrderedList) sourceKeyCursor.get()).getCursor();
+                sourceKeyFields.add(readNameList(nameCursor));
+            }
 
-                // Read in the source key fields.
-                List<List<String>> sourceKeyFields = new ArrayList<>();
-                IAObject sourceKeyObj = EDEF_RECORD_DETAIL.getObjectForField(definition, FIELD_NAME_SOURCE_KEY);
-                IACursor sourceKeyCursor = ((AOrderedList) sourceKeyObj).getCursor();
-                while (sourceKeyCursor.next()) {
-                    IACursor nameCursor = ((AOrderedList) sourceKeyCursor.get()).getCursor();
-                    sourceKeyFields.add(readNameList(nameCursor));
-                }
+            // Read in the destination key fields (this is common to all edge definition records).
+            List<List<String>> destinationKeyFields = new ArrayList<>();
+            IAObject destinationKeyObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_DESTINATION_KEY);
+            IACursor destinationKeyCursor = ((AOrderedList) destinationKeyObj).getCursor();
+            while (destinationKeyCursor.next()) {
+                IACursor nameCursor = ((AOrderedList) destinationKeyCursor.get()).getCursor();
+                destinationKeyFields.add(readNameList(nameCursor));
+            }
 
-                // Read in the destination key fields (this is common to all edge definition records).
-                List<List<String>> destinationKeyFields = new ArrayList<>();
-                IAObject destinationKeyObj =
-                        EDEF_RECORD_DETAIL.getObjectForField(definition, FIELD_NAME_DESTINATION_KEY);
-                IACursor destinationKeyCursor = ((AOrderedList) destinationKeyObj).getCursor();
-                while (destinationKeyCursor.next()) {
-                    IACursor nameCursor = ((AOrderedList) destinationKeyCursor.get()).getCursor();
-                    destinationKeyFields.add(readNameList(nameCursor));
-                }
+            // Read in the definition body.
+            IAObject bodyObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_BODY);
+            String definitionBody = ((AString) bodyObj).getStringValue();
 
-                // Read in the definition body.
-                IAObject bodyObj = EDEF_RECORD_DETAIL.getObjectForField(definition, FIELD_NAME_BODY);
-                String definitionBody = ((AString) bodyObj).getStringValue();
+            // Finally, read in the edge definition and perform validation of the metadata record.
+            schemaBuilder.addEdge(edgeLabel, destinationLabel, sourceLabel, destinationKeyFields, sourceKeyFields,
+                    definitionBody);
+            switch (schemaBuilder.getLastError()) {
+                case NO_ERROR:
+                    break;
 
-                // Finally, read in the edge definition and perform validation of the metadata record.
-                schemaBuilder.addEdge(edgeLabel, destinationLabel, sourceLabel, destinationKeyFields, sourceKeyFields,
-                        definitionBody);
-                switch (schemaBuilder.getLastError()) {
-                    case NO_ERROR:
-                        break;
+                case SOURCE_VERTEX_NOT_FOUND:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR,
+                            "Source vertex " + sourceLabel + " not found in the edge " + edgeLabel + ".");
 
-                    case SOURCE_VERTEX_NOT_FOUND:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Source vertex " + sourceLabel + " not found in the edge " + edgeLabel + ".");
+                case DESTINATION_VERTEX_NOT_FOUND:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR,
+                            "Destination vertex " + destinationLabel + " not found in the edge " + edgeLabel + ".");
 
-                    case DESTINATION_VERTEX_NOT_FOUND:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Destination vertex " + destinationLabel + " not found in the edge " + edgeLabel + ".");
+                case EDGE_LABEL_CONFLICT:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR, "Conflicting edge label found: " + edgeLabel);
 
-                    case CONFLICTING_SOURCE_KEY:
-                    case CONFLICTING_DESTINATION_KEY:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Conflicting edge with the same label found: " + edgeLabel);
-
-                    default:
-                        throw new AsterixException(ErrorCode.METADATA_ERROR,
-                                "Edge constructor was not returned, and an unexpected error encountered");
-                }
+                default:
+                    throw new AsterixException(ErrorCode.METADATA_ERROR,
+                            "Edge constructor was not returned, and an unexpected error encountered");
             }
         }
 
@@ -317,34 +297,21 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
         stringSerde.serialize(aString, fieldValue.getDataOutput());
         elemRecordBuilder.addField(VERTEX_RECORD_DETAIL.getIndexForField(FIELD_NAME_LABEL), fieldValue);
 
-        // Write the vertex definition(s).
-        defListBuilder.reset((AOrderedListType) VERTEX_RECORD_DETAIL.getTypeForField(FIELD_NAME_DEFINITIONS));
-        for (Vertex.Definition definition : vertex.getDefinitions()) {
-            defRecordBuilder.reset(VDEF_RECORD_DETAIL.getRecordType());
-
-            // Write the primary key fields.
-            fieldValue.reset();
-            innerListBuilder.reset(new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null));
-            for (List<String> keyField : definition.getPrimaryKeyFieldNames()) {
-                writeNameList(keyField, itemValue);
-                innerListBuilder.addItem(itemValue);
-            }
-            innerListBuilder.write(fieldValue.getDataOutput(), true);
-            defRecordBuilder.addField(VDEF_RECORD_DETAIL.getIndexForField(FIELD_NAME_PRIMARY_KEY), fieldValue);
-
-            // Write the definition body.
-            fieldValue.reset();
-            aString.setValue(definition.getDefinition());
-            stringSerde.serialize(aString, fieldValue.getDataOutput());
-            defRecordBuilder.addField(VDEF_RECORD_DETAIL.getIndexForField(FIELD_NAME_BODY), fieldValue);
-
-            fieldValue.reset();
-            defRecordBuilder.write(fieldValue.getDataOutput(), true);
-            defListBuilder.addItem(fieldValue);
-        }
+        // Write the primary key fields.
         fieldValue.reset();
-        defListBuilder.write(fieldValue.getDataOutput(), true);
-        elemRecordBuilder.addField(VERTEX_RECORD_DETAIL.getIndexForField(FIELD_NAME_DEFINITIONS), fieldValue);
+        innerListBuilder.reset(new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null));
+        for (List<String> keyField : vertex.getPrimaryKeyFieldNames()) {
+            writeNameList(keyField, itemValue);
+            innerListBuilder.addItem(itemValue);
+        }
+        innerListBuilder.write(fieldValue.getDataOutput(), true);
+        elemRecordBuilder.addField(VERTEX_RECORD_DETAIL.getIndexForField(FIELD_NAME_PRIMARY_KEY), fieldValue);
+
+        // Write the definition body.
+        fieldValue.reset();
+        aString.setValue(vertex.getDefinitionBody());
+        stringSerde.serialize(aString, fieldValue.getDataOutput());
+        elemRecordBuilder.addField(VERTEX_RECORD_DETAIL.getIndexForField(FIELD_NAME_BODY), fieldValue);
 
         itemValue.reset();
         elemRecordBuilder.write(itemValue.getDataOutput(), true);
@@ -371,44 +338,31 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
         stringSerde.serialize(aString, fieldValue.getDataOutput());
         elemRecordBuilder.addField(EDGE_RECORD_DETAIL.getIndexForField(FIELD_NAME_SOURCE_LABEL), fieldValue);
 
-        // Write the edge definition(s).
-        defListBuilder.reset((AOrderedListType) EDGE_RECORD_DETAIL.getTypeForField(FIELD_NAME_DEFINITIONS));
-        for (Edge.Definition definition : edge.getDefinitions()) {
-            defRecordBuilder.reset(EDEF_RECORD_DETAIL.getRecordType());
-
-            // Write the source key fields.
-            fieldValue.reset();
-            innerListBuilder.reset(stringListList);
-            for (List<String> keyField : definition.getSourceKeyFieldNames()) {
-                writeNameList(keyField, itemValue);
-                innerListBuilder.addItem(itemValue);
-            }
-            innerListBuilder.write(fieldValue.getDataOutput(), true);
-            defRecordBuilder.addField(EDEF_RECORD_DETAIL.getIndexForField(FIELD_NAME_SOURCE_KEY), fieldValue);
-
-            // Write the destination key fields.
-            fieldValue.reset();
-            innerListBuilder.reset(stringListList);
-            for (List<String> keyField : definition.getDestinationKeyFieldNames()) {
-                writeNameList(keyField, itemValue);
-                innerListBuilder.addItem(itemValue);
-            }
-            innerListBuilder.write(fieldValue.getDataOutput(), true);
-            defRecordBuilder.addField(EDEF_RECORD_DETAIL.getIndexForField(FIELD_NAME_DESTINATION_KEY), fieldValue);
-
-            // Write the definition body.
-            fieldValue.reset();
-            aString.setValue(definition.getDefinition());
-            stringSerde.serialize(aString, fieldValue.getDataOutput());
-            defRecordBuilder.addField(EDEF_RECORD_DETAIL.getIndexForField(FIELD_NAME_BODY), fieldValue);
-
-            fieldValue.reset();
-            defRecordBuilder.write(fieldValue.getDataOutput(), true);
-            defListBuilder.addItem(fieldValue);
-        }
+        // Write the source key fields.
         fieldValue.reset();
-        defListBuilder.write(fieldValue.getDataOutput(), true);
-        elemRecordBuilder.addField(EDGE_RECORD_DETAIL.getIndexForField(FIELD_NAME_DEFINITIONS), fieldValue);
+        innerListBuilder.reset(stringListList);
+        for (List<String> keyField : edge.getSourceKeyFieldNames()) {
+            writeNameList(keyField, itemValue);
+            innerListBuilder.addItem(itemValue);
+        }
+        innerListBuilder.write(fieldValue.getDataOutput(), true);
+        elemRecordBuilder.addField(EDGE_RECORD_DETAIL.getIndexForField(FIELD_NAME_SOURCE_KEY), fieldValue);
+
+        // Write the destination key fields.
+        fieldValue.reset();
+        innerListBuilder.reset(stringListList);
+        for (List<String> keyField : edge.getDestinationKeyFieldNames()) {
+            writeNameList(keyField, itemValue);
+            innerListBuilder.addItem(itemValue);
+        }
+        innerListBuilder.write(fieldValue.getDataOutput(), true);
+        elemRecordBuilder.addField(EDGE_RECORD_DETAIL.getIndexForField(FIELD_NAME_DESTINATION_KEY), fieldValue);
+
+        // Write the definition body.
+        fieldValue.reset();
+        aString.setValue(edge.getDefinitionBody());
+        stringSerde.serialize(aString, fieldValue.getDataOutput());
+        elemRecordBuilder.addField(EDGE_RECORD_DETAIL.getIndexForField(FIELD_NAME_BODY), fieldValue);
 
         itemValue.reset();
         elemRecordBuilder.write(itemValue.getDataOutput(), true);

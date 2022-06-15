@@ -18,18 +18,16 @@
  */
 package org.apache.asterix.graphix.function.rewrite;
 
-import java.util.List;
-
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.function.FunctionRewriteMap;
+import org.apache.asterix.graphix.function.GraphixFunctionMap;
 import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
 import org.apache.asterix.lang.common.base.Expression;
+import org.apache.asterix.lang.common.expression.CallExpr;
 
 /**
- * @see FunctionRewriteMap
+ * @see GraphixFunctionMap
  */
 @FunctionalInterface
 public interface IFunctionRewrite {
-    Expression apply(GraphixRewritingContext graphixRewritingContext, List<Expression> callArguments)
-            throws CompilationException;
+    Expression apply(GraphixRewritingContext graphixRewritingContext, CallExpr callExpr) throws CompilationException;
 }

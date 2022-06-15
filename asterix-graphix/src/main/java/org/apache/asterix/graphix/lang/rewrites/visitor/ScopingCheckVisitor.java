@@ -31,15 +31,16 @@ import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
+import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
+import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
-import org.apache.asterix.graphix.lang.statement.GraphElementDecl;
+import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
 import org.apache.asterix.lang.common.base.AbstractClause;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.base.ILangExpression;
 import org.apache.asterix.lang.common.expression.VariableExpr;
-import org.apache.asterix.lang.common.rewrites.LangRewritingContext;
 import org.apache.asterix.lang.common.struct.Identifier;
 import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
 import org.apache.asterix.lang.sqlpp.clause.Projection;
@@ -68,8 +69,8 @@ public class ScopingCheckVisitor extends AbstractSqlppExpressionScopingVisitor
         implements IGraphixLangVisitor<Expression, ILangExpression> {
     private final Deque<Mutable<Boolean>> graphixVisitStack = new ArrayDeque<>();
 
-    public ScopingCheckVisitor(LangRewritingContext context) {
-        super(context);
+    public ScopingCheckVisitor(GraphixRewritingContext graphixRewritingContext) {
+        super(graphixRewritingContext);
 
         // We start with an element of false in our stack.
         graphixVisitStack.addLast(new MutableObject<>(false));
@@ -224,13 +225,20 @@ public class ScopingCheckVisitor extends AbstractSqlppExpressionScopingVisitor
 
     // The following should not appear in queries.
     @Override
+    public Expression visit(DeclareGraphStatement declareGraphStatement, ILangExpression arg)
+            throws CompilationException {
+        return null;
+    }
+
+    @Override
     public Expression visit(CreateGraphStatement createGraphStatement, ILangExpression arg)
             throws CompilationException {
         return null;
     }
 
     @Override
-    public Expression visit(GraphElementDecl graphElementDecl, ILangExpression arg) throws CompilationException {
+    public Expression visit(GraphElementDeclaration graphElementDeclaration, ILangExpression arg)
+            throws CompilationException {
         return null;
     }
 

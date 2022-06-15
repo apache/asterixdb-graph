@@ -20,9 +20,10 @@ package org.apache.asterix.graphix.lang.rewrites.resolve;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
+import org.apache.asterix.graphix.lang.rewrites.visitor.StructureResolutionVisitor;
 
 /**
- * @see org.apache.asterix.graphix.lang.rewrites.visitor.ElementResolutionVisitor
+ * @see StructureResolutionVisitor
  */
 public interface IGraphElementResolver {
     /**

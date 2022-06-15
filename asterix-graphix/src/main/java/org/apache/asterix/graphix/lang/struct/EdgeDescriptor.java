@@ -19,6 +19,7 @@
 package org.apache.asterix.graphix.lang.struct;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -91,6 +92,28 @@ public class EdgeDescriptor {
         return edgeLabels.stream()
                 .map(e -> new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.EDGE, e))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(edgeDirection, patternType, edgeLabels, variableExpr, minimumHops, maximumHops);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof EdgeDescriptor)) {
+            return false;
+        }
+        EdgeDescriptor that = (EdgeDescriptor) object;
+        return Objects.equals(this.edgeDirection, that.edgeDirection)
+                && Objects.equals(this.patternType, that.patternType)
+                && Objects.equals(this.edgeLabels, that.edgeLabels)
+                && Objects.equals(this.variableExpr, that.variableExpr)
+                && Objects.equals(this.minimumHops, that.minimumHops)
+                && Objects.equals(this.maximumHops, that.maximumHops);
     }
 
     @Override

@@ -38,7 +38,6 @@ import org.apache.asterix.om.types.IAType;
  */
 public final class GraphixRecordDetailProvider {
     public static final String FIELD_NAME_BODY = "Body";
-    public static final String FIELD_NAME_DEFINITIONS = "Definitions";
     public static final String FIELD_NAME_DEPENDENCY_ID = "DependencyID";
     public static final String FIELD_NAME_DESTINATION_KEY = "DestinationKey";
     public static final String FIELD_NAME_DESTINATION_LABEL = "DestinationLabel";
@@ -51,16 +50,8 @@ public final class GraphixRecordDetailProvider {
     public static final String FIELD_NAME_SOURCE_LABEL = "SourceLabel";
     public static final String FIELD_NAME_VERTICES = "Vertices";
 
-    public static IRecordTypeDetail getVertexDefRecordDetail() {
-        return vertexDefRecordDetail;
-    }
-
     public static IRecordTypeDetail getVertexRecordDetail() {
         return vertexRecordDetail;
-    }
-
-    public static IRecordTypeDetail getEdgeDefRecordDetail() {
-        return edgeDefRecordDetail;
     }
 
     public static IRecordTypeDetail getEdgeRecordDetail() {
@@ -99,41 +90,12 @@ public final class GraphixRecordDetailProvider {
         }
     }
 
-    // Record type for a definition inside a Vertex object attached to a Graph.
-    private static final IRecordTypeDetail vertexDefRecordDetail = new AbstractRecordTypeDetail() {
-        { // Construct our record type here.
-            String[] fieldNames = new String[] { FIELD_NAME_PRIMARY_KEY, FIELD_NAME_BODY };
-            IAType[] fieldTypes = new IAType[] {
-                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null), BuiltinType.ASTRING };
-            recordType = MetadataRecordTypes.createRecordType(getRecordTypeName(), fieldNames, fieldTypes, true);
-        }
-
-        @Override
-        public String getRecordTypeName() {
-            return "VertexDefinitionRecordType";
-        }
-
-        @Override
-        public int getIndexForField(String fieldName) {
-            switch (fieldName) {
-                case FIELD_NAME_PRIMARY_KEY:
-                    return 0;
-
-                case FIELD_NAME_BODY:
-                    return 1;
-
-                default:
-                    throw new IllegalArgumentException("Name " + fieldName + " not found for this record detail!");
-            }
-        }
-    };
-
     // Record type for a Vertex object attached to a Graph.
     private static final IRecordTypeDetail vertexRecordDetail = new AbstractRecordTypeDetail() {
         { // Construct our record type here.
-            String[] fieldNames = new String[] { FIELD_NAME_LABEL, FIELD_NAME_DEFINITIONS };
+            String[] fieldNames = new String[] { FIELD_NAME_LABEL, FIELD_NAME_PRIMARY_KEY, FIELD_NAME_BODY };
             IAType[] fieldTypes = new IAType[] { BuiltinType.ASTRING,
-                    new AOrderedListType(vertexDefRecordDetail.getRecordType(), null) };
+                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null), BuiltinType.ASTRING };
             recordType = MetadataRecordTypes.createRecordType(getRecordTypeName(), fieldNames, fieldTypes, true);
         }
 
@@ -148,37 +110,7 @@ public final class GraphixRecordDetailProvider {
                 case FIELD_NAME_LABEL:
                     return 0;
 
-                case FIELD_NAME_DEFINITIONS:
-                    return 1;
-
-                default:
-                    throw new IllegalArgumentException("Name " + fieldName + " not found for this record detail!");
-            }
-        }
-    };
-
-    // Record type for a definition inside an Edge object attached to a Graph.
-    private static final IRecordTypeDetail edgeDefRecordDetail = new AbstractRecordTypeDetail() {
-        { // Construct our record type here.
-            String[] fieldNames = new String[] { FIELD_NAME_SOURCE_KEY, FIELD_NAME_DESTINATION_KEY, FIELD_NAME_BODY };
-            IAType[] fieldTypes = new IAType[] {
-                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null),
-                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null), BuiltinType.ASTRING };
-            recordType = MetadataRecordTypes.createRecordType(getRecordTypeName(), fieldNames, fieldTypes, true);
-        }
-
-        @Override
-        public String getRecordTypeName() {
-            return "EdgeDefinitionRecordType";
-        }
-
-        @Override
-        public int getIndexForField(String fieldName) {
-            switch (fieldName) {
-                case FIELD_NAME_SOURCE_KEY:
-                    return 0;
-
-                case FIELD_NAME_DESTINATION_KEY:
+                case FIELD_NAME_PRIMARY_KEY:
                     return 1;
 
                 case FIELD_NAME_BODY:
@@ -194,9 +126,10 @@ public final class GraphixRecordDetailProvider {
     private static final IRecordTypeDetail edgeRecordDetail = new AbstractRecordTypeDetail() {
         { // Construct our record type here.
             String[] fieldNames = new String[] { FIELD_NAME_LABEL, FIELD_NAME_DESTINATION_LABEL,
-                    FIELD_NAME_SOURCE_LABEL, FIELD_NAME_DEFINITIONS };
+                    FIELD_NAME_SOURCE_LABEL, FIELD_NAME_SOURCE_KEY, FIELD_NAME_DESTINATION_KEY, FIELD_NAME_BODY };
             IAType[] fieldTypes = new IAType[] { BuiltinType.ASTRING, BuiltinType.ASTRING, BuiltinType.ASTRING,
-                    new AOrderedListType(edgeDefRecordDetail.getRecordType(), null) };
+                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null),
+                    new AOrderedListType(new AOrderedListType(BuiltinType.ASTRING, null), null), BuiltinType.ASTRING };
             recordType = MetadataRecordTypes.createRecordType(getRecordTypeName(), fieldNames, fieldTypes, true);
         }
 
@@ -217,8 +150,14 @@ public final class GraphixRecordDetailProvider {
                 case FIELD_NAME_SOURCE_LABEL:
                     return 2;
 
-                case FIELD_NAME_DEFINITIONS:
+                case FIELD_NAME_SOURCE_KEY:
                     return 3;
+
+                case FIELD_NAME_DESTINATION_KEY:
+                    return 4;
+
+                case FIELD_NAME_BODY:
+                    return 5;
 
                 default:
                     throw new IllegalArgumentException("Name " + fieldName + " not found for this record detail!");

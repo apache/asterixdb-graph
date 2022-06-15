@@ -1,9 +1,12 @@
-{ "fw_hops": 3, "u1_user_id": 1, "fw_left_vertex": { "user_id": 2 }, "u2_user_id": 4 }
-{ "fw_hops": 3, "u1_user_id": 1, "fw_left_vertex": { "user_id": 3 }, "u2_user_id": 4 }
-{ "fw_hops": 3, "u1_user_id": 1, "fw_left_vertex": { "user_id": 4 }, "u2_user_id": 4 }
-{ "fw_hops": 3, "u1_user_id": 2, "fw_left_vertex": { "user_id": 3 }, "u2_user_id": 5 }
-{ "fw_hops": 3, "u1_user_id": 2, "fw_left_vertex": { "user_id": 4 }, "u2_user_id": 5 }
-{ "fw_hops": 3, "u1_user_id": 2, "fw_left_vertex": { "user_id": 5 }, "u2_user_id": 5 }
-{ "fw_hops": 3, "u1_user_id": 3, "fw_left_vertex": { "user_id": 4 }, "u2_user_id": 6 }
-{ "fw_hops": 3, "u1_user_id": 3, "fw_left_vertex": { "user_id": 5 }, "u2_user_id": 6 }
-{ "fw_hops": 3, "u1_user_id": 3, "fw_left_vertex": { "user_id": 6 }, "u2_user_id": 6 }
+{ "fw_hops": 3, "u1_user_id": 1, "u2_user_id": 4, "path_user_id": 1 }
+{ "fw_hops": 3, "u1_user_id": 1, "u2_user_id": 4, "path_user_id": 2 }
+{ "fw_hops": 3, "u1_user_id": 1, "u2_user_id": 4, "path_user_id": 3 }
+{ "fw_hops": 3, "u1_user_id": 1, "u2_user_id": 4, "path_user_id": 4 }
+{ "fw_hops": 3, "u1_user_id": 2, "u2_user_id": 5, "path_user_id": 2 }
+{ "fw_hops": 3, "u1_user_id": 2, "u2_user_id": 5, "path_user_id": 3 }
+{ "fw_hops": 3, "u1_user_id": 2, "u2_user_id": 5, "path_user_id": 4 }
+{ "fw_hops": 3, "u1_user_id": 2, "u2_user_id": 5, "path_user_id": 5 }
+{ "fw_hops": 3, "u1_user_id": 3, "u2_user_id": 6, "path_user_id": 3 }
+{ "fw_hops": 3, "u1_user_id": 3, "u2_user_id": 6, "path_user_id": 4 }
+{ "fw_hops": 3, "u1_user_id": 3, "u2_user_id": 6, "path_user_id": 5 }
+{ "fw_hops": 3, "u1_user_id": 3, "u2_user_id": 6, "path_user_id": 6 }
