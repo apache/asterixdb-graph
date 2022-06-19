@@ -18,11 +18,12 @@
  */
 package org.apache.asterix.graphix.metadata.entity.dependency;
 
+import java.io.Serializable;
+
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.metadata.bootstrap.GraphixIndexDetailProvider;
 import org.apache.asterix.metadata.api.ExtensionMetadataDatasetId;
 import org.apache.asterix.metadata.api.IExtensionMetadataEntity;
-import org.apache.asterix.om.base.AUUID;
 
 /**
  * Metadata for describing the pair [entity, list of dependencies for said entity]. This includes the following:
@@ -32,8 +33,8 @@ import org.apache.asterix.om.base.AUUID;
  * 4. The kind associated with the entity (FUNCTION, GRAPH, or VIEW).
  * 5. An iterator of the dependencies associated with the entity.
  */
-public interface IEntityRequirements extends Iterable<DependencyIdentifier>, IExtensionMetadataEntity {
-    AUUID getPrimaryKeyValue();
+public interface IEntityRequirements extends Iterable<DependencyIdentifier>, IExtensionMetadataEntity, Serializable {
+    String getPrimaryKeyValue();
 
     DataverseName getDataverseName();
 

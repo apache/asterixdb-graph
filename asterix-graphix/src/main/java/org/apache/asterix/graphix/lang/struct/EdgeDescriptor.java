@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.graphix.lang.struct;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -36,7 +37,9 @@ import org.apache.asterix.lang.common.expression.VariableExpr;
  * 5. A maximum number of hops (not allowed to be NULL).
  * 6. An edge direction (left to right, right to left, or undirected).
  */
-public class EdgeDescriptor {
+public class EdgeDescriptor implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final Set<ElementLabel> edgeLabels;
     private final Integer minimumHops;
     private final Integer maximumHops;

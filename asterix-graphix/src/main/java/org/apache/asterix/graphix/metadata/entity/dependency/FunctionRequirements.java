@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.graphix.metadata.entity.dependency;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
@@ -25,7 +26,6 @@ import java.util.Set;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.om.base.AGeneratedUUID;
-import org.apache.asterix.om.base.AUUID;
 
 /**
  * A collection of {@link org.apache.asterix.graphix.metadata.entity.schema.Graph} dependencies associated with a
@@ -33,20 +33,27 @@ import org.apache.asterix.om.base.AUUID;
  * for functions.
  */
 public class FunctionRequirements implements IEntityRequirements {
+    private static final long serialVersionUID = 1L;
+
     private final Set<DependencyIdentifier> functionRequirements;
     private final FunctionSignature functionSignature;
 
-    // Physically, our requirements are indexed by a UUID. Logically, we ignore this.
-    private final AUUID primaryKeyValue;
+    // Physically, our requirements are indexed by the string below. Logically, we ignore this.
+    private final String primaryKeyValue;
 
-    public FunctionRequirements(FunctionSignature functionSignature, Set<DependencyIdentifier> functionRequirements) {
+    public FunctionRequirements(FunctionSignature functionSignature, Set<DependencyIdentifier> functionRequirements)
+            throws IOException {
         this.functionRequirements = Objects.requireNonNull(functionRequirements);
         this.functionSignature = Objects.requireNonNull(functionSignature);
-        this.primaryKeyValue = new AGeneratedUUID();
+
+        // Generate a unique primary key from a AUUID.
+        StringBuilder sb = new StringBuilder();
+        new AGeneratedUUID().appendLiteralOnly(sb);
+        this.primaryKeyValue = sb.toString();
     }
 
     public FunctionRequirements(FunctionSignature functionSignature, Set<DependencyIdentifier> functionRequirements,
-            AUUID primaryKeyValue) {
+            String primaryKeyValue) {
         this.functionRequirements = Objects.requireNonNull(functionRequirements);
         this.functionSignature = Objects.requireNonNull(functionSignature);
         this.primaryKeyValue = Objects.requireNonNull(primaryKeyValue);
@@ -57,7 +64,7 @@ public class FunctionRequirements implements IEntityRequirements {
     }
 
     @Override
-    public AUUID getPrimaryKeyValue() {
+    public String getPrimaryKeyValue() {
         return primaryKeyValue;
     }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.graphix.metadata.entity.dependency;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -33,7 +34,6 @@ import org.apache.asterix.lang.common.base.IQueryRewriter;
 import org.apache.asterix.lang.common.util.ExpressionUtils;
 import org.apache.asterix.metadata.utils.MetadataUtil;
 import org.apache.asterix.om.base.AGeneratedUUID;
-import org.apache.asterix.om.base.AUUID;
 import org.apache.hyracks.algebricks.common.utils.Triple;
 
 /**
@@ -41,27 +41,33 @@ import org.apache.hyracks.algebricks.common.utils.Triple;
  * {@link org.apache.asterix.graphix.metadata.entity.schema.Graph} instance.
  */
 public class GraphRequirements implements IEntityRequirements {
+    private static final long serialVersionUID = 1L;
+
     // A graph potentially depends on datasets, synonyms, functions, and graphs.
     private final Set<DependencyIdentifier> graphRequirements;
     private final DataverseName dataverseName;
     private final String graphName;
 
-    // Physically, our requirements are indexed by a UUID. Logically, we ignore this.
-    private AUUID primaryKeyValue;
+    // Physically, our requirements are indexed by the string below. Logically, we ignore this.
+    private String primaryKeyValue;
+
+    public GraphRequirements(DataverseName dataverseName, String graphName) throws IOException {
+        this.graphRequirements = new HashSet<>();
+        this.dataverseName = Objects.requireNonNull(dataverseName);
+        this.graphName = Objects.requireNonNull(graphName);
+
+        // Generate a unique primary key from a AUUID.
+        StringBuilder sb = new StringBuilder();
+        new AGeneratedUUID().appendLiteralOnly(sb);
+        this.primaryKeyValue = sb.toString();
+    }
 
     public GraphRequirements(DataverseName dataverseName, String graphName, Set<DependencyIdentifier> graphRequirements,
-            AUUID primaryKeyValue) {
+            String primaryKeyValue) {
         this.graphRequirements = Objects.requireNonNull(graphRequirements);
         this.dataverseName = Objects.requireNonNull(dataverseName);
         this.graphName = Objects.requireNonNull(graphName);
         this.primaryKeyValue = Objects.requireNonNull(primaryKeyValue);
-    }
-
-    public GraphRequirements(DataverseName dataverseName, String graphName) {
-        this.graphRequirements = new HashSet<>();
-        this.dataverseName = Objects.requireNonNull(dataverseName);
-        this.graphName = Objects.requireNonNull(graphName);
-        this.primaryKeyValue = new AGeneratedUUID();
     }
 
     public void loadNonGraphDependencies(Expression body, IQueryRewriter queryRewriter) throws CompilationException {
@@ -88,12 +94,12 @@ public class GraphRequirements implements IEntityRequirements {
         graphRequirements.addAll(graphDependencies);
     }
 
-    public void setPrimaryKeyValue(AUUID primaryKeyValue) {
+    public void setPrimaryKeyValue(String primaryKeyValue) {
         this.primaryKeyValue = primaryKeyValue;
     }
 
     @Override
-    public AUUID getPrimaryKeyValue() {
+    public String getPrimaryKeyValue() {
         return primaryKeyValue;
     }
 

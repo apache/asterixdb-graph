@@ -18,9 +18,12 @@
  */
 package org.apache.asterix.graphix.lang.struct;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class ElementLabel {
+public class ElementLabel implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final String labelName;
     private boolean isInferred;
 

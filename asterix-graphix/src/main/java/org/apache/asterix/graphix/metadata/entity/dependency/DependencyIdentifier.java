@@ -18,6 +18,7 @@
  */
 package org.apache.asterix.graphix.metadata.entity.dependency;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 import org.apache.asterix.common.functions.FunctionSignature;
@@ -30,7 +31,9 @@ import org.apache.asterix.metadata.utils.MetadataUtil;
  * A graph may depend on datasets, synonyms, functions, and other graphs. Similarly, functions and views may depend
  * on graphs themselves.
  */
-public class DependencyIdentifier {
+public class DependencyIdentifier implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final DataverseName dataverseName;
     private final String entityName;
     private final String entityDetail;
