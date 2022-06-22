@@ -387,6 +387,7 @@ GraphConstructor.VertexConstructor GraphVertexSpecification(Token startStmtToken
 {
   Pair<List<Integer>, List<List<String>>> primaryKeyFields;
   Token beginPos = null, endPos = null;
+  int positionOffset = 0;
   Expression vertexDefinitionExpr;
   ElementLabel vertexLabel;
 }
@@ -400,11 +401,12 @@ GraphConstructor.VertexConstructor GraphVertexSpecification(Token startStmtToken
     createNewScope();
   }
   (
-    vertexDefinitionExpr = ViewBody() { endPos = token; }
+    vertexDefinitionExpr = ViewBody() { endPos = token; positionOffset++; }
     | <LEFTPAREN> { beginPos = token; } vertexDefinitionExpr = ViewBody() { endPos = token; } <RIGHTPAREN>
   )
   {
-    String vDef = extractFragment(beginPos.beginLine, beginPos.beginColumn + 1, endPos.endLine, endPos.endColumn + 1);
+    String vDef = extractFragment(beginPos.beginLine, beginPos.beginColumn + positionOffset, endPos.endLine,
+      endPos.endColumn + 1);
     removeCurrentScope();
     GraphConstructor.VertexConstructor vertexConstructor = new GraphConstructor.VertexConstructor(vertexLabel,
       primaryKeyFields.second, primaryKeyFields.first, vertexDefinitionExpr, vDef);
@@ -431,6 +433,7 @@ GraphConstructor.EdgeConstructor GraphEdgeSpecification(Token startStmtToken) th
   Pair<List<Integer>, List<List<String>>> keyFields;
   Token beginPos = null, endPos = null;
   Expression edgeDefinitionExpr = null;
+  int positionOffset = 0;
 
   List<Integer> destinationKeySourceIndicators = null;
   List<Integer> sourceKeySourceIndicators = null;
@@ -457,7 +460,7 @@ GraphConstructor.EdgeConstructor GraphEdgeSpecification(Token startStmtToken) th
       createNewScope();
     }
     (
-      edgeDefinitionExpr = SelectExpression(true) { endPos = token; }
+      edgeDefinitionExpr = SelectExpression(true) { endPos = token; positionOffset++;  }
       | <LEFTPAREN> { beginPos = token; } edgeDefinitionExpr = SelectExpression(true) { endPos = token; } <RIGHTPAREN>
     )
   )
@@ -476,7 +479,8 @@ GraphConstructor.EdgeConstructor GraphEdgeSpecification(Token startStmtToken) th
 
     String eDef = null;
     if (edgeDefinitionExpr != null) {
-      eDef = extractFragment(beginPos.beginLine, beginPos.beginColumn + 1, endPos.endLine, endPos.endColumn + 1);
+      eDef = extractFragment(beginPos.beginLine, beginPos.beginColumn + positionOffset, endPos.endLine,
+        endPos.endColumn + 1);
       removeCurrentScope();
     }
 
