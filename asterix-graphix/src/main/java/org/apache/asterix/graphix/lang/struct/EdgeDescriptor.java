@@ -19,23 +19,24 @@
 package org.apache.asterix.graphix.lang.struct;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
-import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
+import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 
 /**
  * Descriptor for a query edge instance. A query edge has the following:
- * 1. A set of edge labels.
- * 2. A variable associated with the query edge.
- * 3. A pattern type. An edge pattern can either be a pure edge, or a sub-path.
- * 4. A minimum number of hops (allowed to be NULL, indicating a minimum of 1 hop).
- * 5. A maximum number of hops (not allowed to be NULL).
- * 6. An edge direction (left to right, right to left, or undirected).
+ * <ul>
+ *  <li>A set of edge labels.</li>
+ *  <li>A variable associated with the query edge.</li>
+ *  <li>A pattern type. An edge pattern can either be a pure edge, or a sub-path.</li>
+ *  <li>A minimum number of hops (allowed to be NULL, indicating a minimum of 1 hop).</li>
+ *  <li>A maximum number of hops (allowed to be NULL, indicating an unbounded maximum).</li>
+ *  <li>An edge direction (left to right, right to left, or undirected).</li>
+ *  <li>A filter expression (allowed to be NULL).</li>
+ * </ul>
  */
 public class EdgeDescriptor implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -44,18 +45,20 @@ public class EdgeDescriptor implements Serializable {
     private final Integer minimumHops;
     private final Integer maximumHops;
     private final PatternType patternType;
+    private final Expression filterExpr;
 
     // We must be able to assign variables to our edges, as well as change the direction of UNDIRECTED edges.
     private VariableExpr variableExpr;
     private EdgeDirection edgeDirection;
 
     public EdgeDescriptor(EdgeDirection edgeDirection, PatternType patternType, Set<ElementLabel> edgeLabels,
-            VariableExpr variableExpr, Integer minimumHops, Integer maximumHops) {
-        this.edgeDirection = edgeDirection;
+            Expression filterExpr, VariableExpr variableExpr, Integer minimumHops, Integer maximumHops) {
         this.edgeLabels = edgeLabels;
+        this.patternType = patternType;
         this.minimumHops = minimumHops;
         this.maximumHops = maximumHops;
-        this.patternType = patternType;
+        this.filterExpr = filterExpr;
+        this.edgeDirection = edgeDirection;
         this.variableExpr = variableExpr;
     }
 
@@ -83,6 +86,10 @@ public class EdgeDescriptor implements Serializable {
         return patternType;
     }
 
+    public Expression getFilterExpr() {
+        return filterExpr;
+    }
+
     public VariableExpr getVariableExpr() {
         return variableExpr;
     }
@@ -91,15 +98,9 @@ public class EdgeDescriptor implements Serializable {
         this.variableExpr = variableExpr;
     }
 
-    public List<GraphElementIdentifier> generateIdentifiers(GraphIdentifier graphIdentifier) {
-        return edgeLabels.stream()
-                .map(e -> new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.EDGE, e))
-                .collect(Collectors.toList());
-    }
-
     @Override
     public int hashCode() {
-        return Objects.hash(edgeDirection, patternType, edgeLabels, variableExpr, minimumHops, maximumHops);
+        return Objects.hash(edgeDirection, patternType, edgeLabels, variableExpr, filterExpr, minimumHops, maximumHops);
     }
 
     @Override
@@ -115,6 +116,7 @@ public class EdgeDescriptor implements Serializable {
                 && Objects.equals(this.patternType, that.patternType)
                 && Objects.equals(this.edgeLabels, that.edgeLabels)
                 && Objects.equals(this.variableExpr, that.variableExpr)
+                && Objects.equals(this.filterExpr, that.filterExpr)
                 && Objects.equals(this.minimumHops, that.minimumHops)
                 && Objects.equals(this.maximumHops, that.maximumHops);
     }
@@ -123,16 +125,31 @@ public class EdgeDescriptor implements Serializable {
     public String toString() {
         String labelsString = edgeLabels.stream().map(ElementLabel::toString).collect(Collectors.joining("|"));
         String variableString = (variableExpr != null) ? variableExpr.getVar().toString() : "";
-        String subPathString = (patternType != PatternType.PATH) ? ""
-                : "{" + ((minimumHops == null) ? "" : minimumHops) + "," + maximumHops + "}";
-        return String.format("%s-[%s:(%s)%s]-%s", (edgeDirection == EdgeDirection.LEFT_TO_RIGHT) ? "" : "<",
-                variableString, labelsString, subPathString, (edgeDirection == EdgeDirection.RIGHT_TO_LEFT) ? "" : ">");
+        String minHopsString = ((minimumHops == null) ? "" : minimumHops.toString());
+        String maxHopsString = ((maximumHops == null) ? "" : maximumHops.toString());
+        String subPathString = (patternType != PatternType.PATH) ? "" : "{" + minHopsString + "," + maxHopsString + "}";
+        String filterString = (filterExpr == null) ? "" : (" WHERE " + filterExpr + " ");
+        return String.format("%s-[%s:(%s)%s%s]-%s", (edgeDirection == EdgeDirection.LEFT_TO_RIGHT) ? "" : "<",
+                variableString, labelsString, subPathString, filterString,
+                (edgeDirection == EdgeDirection.RIGHT_TO_LEFT) ? "" : ">");
     }
 
     public enum EdgeDirection {
-        LEFT_TO_RIGHT,
-        RIGHT_TO_LEFT,
-        UNDIRECTED
+        LEFT_TO_RIGHT("L2R"),
+        RIGHT_TO_LEFT("R2L"),
+        UNDIRECTED("U");
+
+        // For printing purposes...
+        private final String shortName;
+
+        EdgeDirection(String shortName) {
+            this.shortName = shortName;
+        }
+
+        @Override
+        public String toString() {
+            return shortName;
+        }
     }
 
     public enum PatternType {

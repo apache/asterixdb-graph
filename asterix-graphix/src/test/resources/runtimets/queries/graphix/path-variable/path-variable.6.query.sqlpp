@@ -27,7 +27,7 @@ FROM GRAPH  VERTEX (:User)
                    AS ( FROM    Yelp.Friends F
                         WHERE   F.friend_group = "A"
                         SELECT  F.user_id, F.friend )
-MATCH       (u)-[e1:{1,2}]-(v) AS p
+MATCH       (u)-[e1{1,2}]-(v) AS p
 SELECT      LEN(p.Edges) AS pathLength,
             u.user_id AS u_user_id,
             v.user_id AS v_user_id

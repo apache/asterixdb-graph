@@ -25,17 +25,21 @@ import java.util.stream.Collectors;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.optype.MatchType;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.lang.rewrite.lower.action.MatchSemanticAction;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractClause;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
  * Container for a collection of {@link PathPatternExpr} nodes.
- * - A MATCH node has three types: LEADING (indicating that this node is first), INNER (indicating that this node is not
- * first, but all patterns must be matched), and LEFTOUTER (indicating that this node is optionally matched).
- * - Under isomorphism semantics, two patterns in different MATCH nodes (one pattern in a LEADING MATCH node and
- * one pattern in an INNER MATCH node) are equivalent to two patterns in a single LEADING MATCH node. See
- * {@link org.apache.asterix.graphix.lang.rewrites.lower.action.IsomorphismAction} for more detail.
+ * <ul>
+ *  <li>A MATCH node has three types: LEADING (indicating that this node is first), INNER (indicating that this node
+ *  is not first, but all patterns must be matched), and LEFTOUTER (indicating that this node is optionally
+ *  matched).</li>
+ *  <li>Under isomorphism semantics, two patterns in different MATCH nodes (one pattern in a LEADING MATCH node and
+ *  one pattern in an INNER MATCH node) are equivalent to two patterns in a single LEADING MATCH node. See
+ *  {@link MatchSemanticAction} for more detail</li>
+ * </ul>
  */
 public class MatchClause extends AbstractClause {
     private final List<PathPatternExpr> pathExpressions;
@@ -43,7 +47,7 @@ public class MatchClause extends AbstractClause {
 
     public MatchClause(List<PathPatternExpr> pathExpressions, MatchType matchType) {
         this.pathExpressions = Objects.requireNonNull(pathExpressions);
-        this.matchType = matchType;
+        this.matchType = Objects.requireNonNull(matchType);
     }
 
     public List<PathPatternExpr> getPathExpressions() {
@@ -67,7 +71,6 @@ public class MatchClause extends AbstractClause {
     @Override
     public String toString() {
         String pathString = pathExpressions.stream().map(PathPatternExpr::toString).collect(Collectors.joining("\n"));
-        return matchType.toString() + " " + pathString;
-
+        return matchType + " " + pathString;
     }
 }

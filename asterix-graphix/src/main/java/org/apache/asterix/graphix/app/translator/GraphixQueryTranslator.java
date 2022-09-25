@@ -20,9 +20,11 @@ package org.apache.asterix.graphix.app.translator;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import org.apache.asterix.app.translator.QueryTranslator;
 import org.apache.asterix.common.api.IResponsePrinter;
@@ -33,8 +35,8 @@ import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.compiler.provider.ILangCompilationProvider;
 import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
-import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
-import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
+import org.apache.asterix.graphix.lang.rewrite.GraphixQueryRewriter;
+import org.apache.asterix.graphix.lang.rewrite.GraphixRewritingContext;
 import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
 import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
@@ -61,16 +63,21 @@ import org.apache.asterix.metadata.MetadataTransactionContext;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.translator.IRequestParameters;
 import org.apache.asterix.translator.SessionOutput;
+import org.apache.hyracks.algebricks.common.utils.Pair;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
 import org.apache.hyracks.api.exceptions.IWarningCollector;
 
 public class GraphixQueryTranslator extends QueryTranslator {
-    Set<DeclareGraphStatement> declareGraphStatements = new HashSet<>();
+    private final Set<DeclareGraphStatement> declareGraphStatements = new HashSet<>();
+    private final Map<String, String> configFileOptions;
 
     public GraphixQueryTranslator(ICcApplicationContext appCtx, List<Statement> statements, SessionOutput output,
             ILangCompilationProvider compilationProvider, ExecutorService executorService,
-            IResponsePrinter responsePrinter) {
+            IResponsePrinter responsePrinter, List<Pair<String, String>> configFileOptions) {
         super(appCtx, statements, output, compilationProvider, executorService, responsePrinter);
+
+        // We are given the following information from our cluster-controller config file.
+        this.configFileOptions = configFileOptions.stream().collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
     }
 
     public GraphixQueryRewriter getQueryRewriter() {
@@ -93,15 +100,17 @@ public class GraphixQueryTranslator extends QueryTranslator {
             List<FunctionDecl> declaredFunctions, List<ViewDecl> declaredViews, IWarningCollector warningCollector,
             int varCounter) {
         return new GraphixRewritingContext(metadataProvider, declaredFunctions, declaredViews, declareGraphStatements,
-                warningCollector, varCounter);
+                warningCollector, varCounter, configFileOptions);
     }
 
     /**
      * To create a view, we must perform the following:
-     * a) Check the view body for any named graphs.
-     * b) Rewrite graph expressions into pure SQL++ expressions. The dependencies associated with the rewritten
-     * expressions will be recorded in the "Dataset" dataset.
-     * c) Record any graph-related dependencies for the view in our metadata.
+     * <ol>
+     *  <li>Check the view body for any named graphs.</li>
+     *  <li>Rewrite graph expressions into pure SQL++ expressions. The dependencies associated with the rewritten
+     *  expressions will be recorded in the "Dataset" dataset.</li>
+     *  <li>Record any graph-related dependencies for the view in our metadata.</li>
+     * </ol>
      */
     @Override
     protected CreateResult doCreateView(MetadataProvider metadataProvider, CreateViewStatement cvs,
@@ -153,10 +162,12 @@ public class GraphixQueryTranslator extends QueryTranslator {
 
     /**
      * To create a function, we must perform the following:
-     * a) Check the function body for any named graphs.
-     * b) Rewrite graph expressions into pure SQL++ expressions. The dependencies associated with the rewritten
-     * expressions will be recorded in the "Function" dataset.
-     * c) Record any graph-related dependencies for the function in our metadata.
+     * <ol>
+     *  <li>Check the function body for any named graphs.</li>
+     *  <li>Rewrite graph expressions into pure SQL++ expressions. The dependencies associated with the rewritten
+     *  expressions will be recorded in the "Function" dataset.</li>
+     *  <li>Record any graph-related dependencies for the function in our metadata.</li>
+     * </ol>
      */
     @Override
     protected CreateResult doCreateFunction(MetadataProvider metadataProvider, CreateFunctionStatement cfs,
@@ -229,8 +240,10 @@ public class GraphixQueryTranslator extends QueryTranslator {
 
     /**
      * Before dropping a function, we perform the following:
-     * 1. Check if any of our existing graphs depend on the function to-be-dropped.
-     * 2. Remove the GraphDependency record for the function to-be-dropped if it exists.
+     * <ol>
+     *  <li>Check if any of our existing graphs depend on the function to-be-dropped.</li>
+     *  <li>Remove the GraphDependency record for the function to-be-dropped if it exists.</li>
+     * </ol>
      */
     @Override
     protected void handleFunctionDropStatement(MetadataProvider metadataProvider, Statement stmt,
@@ -264,8 +277,10 @@ public class GraphixQueryTranslator extends QueryTranslator {
 
     /**
      * Before dropping a view, we perform the following:
-     * 1. Check if any of our existing graphs depend on the view to-be-dropped.
-     * 2. Remove the GraphDependency record for the view to-be-dropped if it exists.
+     * <ol>
+     *  <li>Check if any of our existing graphs depend on the view to-be-dropped.</li>
+     *  <li>Remove the GraphDependency record for the view to-be-dropped if it exists.</li>
+     * </ol>
      */
     @Override
     public void handleViewDropStatement(MetadataProvider metadataProvider, Statement stmt) throws Exception {
@@ -313,9 +328,12 @@ public class GraphixQueryTranslator extends QueryTranslator {
 
     /**
      * Before dropping a dataverse, we perform the following:
-     * 1. Check if any other entities outside the dataverse to-be-dropped depend on any entities inside the dataverse.
-     * 2. Remove all GraphDependency records associated with the dataverse to-be-dropped.
-     * 3. Remove all Graph records associated with the dataverse to-be-dropped.
+     * <ol>
+     *  <li>Check if any other entities outside the dataverse to-be-dropped depend on any entities inside the
+     *  dataverse.</li>
+     *  <li>Remove all GraphDependency records associated with the dataverse to-be-dropped.</li>
+     *  <li>Remove all Graph records associated with the dataverse to-be-dropped.</li>
+     * </ol>
      */
     @Override
     protected void handleDataverseDropStatement(MetadataProvider metadataProvider, Statement stmt,

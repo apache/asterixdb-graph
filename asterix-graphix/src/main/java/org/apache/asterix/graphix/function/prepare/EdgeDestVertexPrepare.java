@@ -25,7 +25,6 @@ import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.FieldBinding;
 import org.apache.asterix.lang.common.expression.LiteralExpr;
 import org.apache.asterix.lang.common.expression.RecordConstructor;
-import org.apache.asterix.lang.common.expression.VariableExpr;
 import org.apache.asterix.lang.common.literal.StringLiteral;
 import org.apache.asterix.lang.common.struct.Identifier;
 
@@ -42,9 +41,8 @@ public class EdgeDestVertexPrepare extends AbstractElementPrepare {
         EdgeDescriptor.EdgeDirection edgeDirection = edgeDescriptor.getEdgeDirection();
         VertexPatternExpr destVertexExpr = (edgeDirection == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT)
                 ? edgePatternExpr.getRightVertex() : edgePatternExpr.getLeftVertex();
-        VariableExpr destVariableExpr = new VariableExpr(destVertexExpr.getVariableExpr().getVar());
         LiteralExpr fieldNameExpr = new LiteralExpr(new StringLiteral(IDENTIFIER.getValue()));
-        FieldBinding fieldBinding = new FieldBinding(fieldNameExpr, destVariableExpr);
+        FieldBinding fieldBinding = new FieldBinding(fieldNameExpr, destVertexExpr.getVariableExpr());
         schemaRecord.getFbList().add(fieldBinding);
     }
 }

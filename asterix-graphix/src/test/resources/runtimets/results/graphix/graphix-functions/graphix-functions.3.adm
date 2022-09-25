@@ -1,8 +1,8 @@
-{ "vertexLabel": "Review", "vertexDetail": { "ElementLabel": "Review", "VertexKey": [ "A" ] } }
-{ "vertexLabel": "Review", "vertexDetail": { "ElementLabel": "Review", "VertexKey": [ "B" ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 1 ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 2 ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 3 ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 4 ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 5 ] } }
-{ "vertexLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 6 ] } }
+{ "elementLabel": "Review", "vertexDetail": { "ElementLabel": "Review", "VertexKey": [ "A" ] } }
+{ "elementLabel": "Review", "vertexDetail": { "ElementLabel": "Review", "VertexKey": [ "B" ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 1 ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 2 ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 3 ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 4 ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 5 ] } }
+{ "elementLabel": "User", "vertexDetail": { "ElementLabel": "User", "VertexKey": [ 6 ] } }

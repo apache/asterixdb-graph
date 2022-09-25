@@ -26,8 +26,8 @@ import org.apache.asterix.app.translator.QueryTranslator;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
 import org.apache.asterix.graphix.lang.util.GraphStatementHandlingUtil;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.translator.IRequestParameters;
@@ -37,10 +37,12 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 
 /**
  * Statement for storing a {@link GraphConstructor} instance in our metadata.
- * - A CREATE GRAPH statement MUST always include a graph name.
- * - We can specify "CREATE OR REPLACE" to perform an upsert of our graph.
- * - We can specify "CREATE ... IF NOT EXISTS" to insert the graph if it doesn't exist, and not raise an error if the
- * graph already exists.
+ * <ul>
+ *  <li>A CREATE GRAPH statement MUST always include a graph name.</li>
+ *  <li>We can specify "CREATE OR REPLACE" to perform an upsert of our graph.</li>
+ *  <li>We can specify "CREATE ... IF NOT EXISTS" to insert the graph if it doesn't exist, and not raise an error if the
+ *  graph already exists.</li>
+ * </ul>
  */
 public class CreateGraphStatement extends ExtensionStatement {
     private final GraphConstructor graphConstructor;

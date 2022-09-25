@@ -30,7 +30,7 @@ public class GraphixQueryTranslatorExtension implements IStatementExecutorExtens
     public static final ExtensionId GRAPHIX_QUERY_TRANSLATOR_EXTENSION_ID =
             new ExtensionId(GraphixQueryTranslatorExtension.class.getSimpleName(), 0);
 
-    private static final IStatementExecutorFactory INSTANCE = new GraphixQueryTranslatorFactory();
+    private static final GraphixQueryTranslatorFactory INSTANCE = new GraphixQueryTranslatorFactory();
 
     @Override
     public ExtensionId getId() {
@@ -39,6 +39,7 @@ public class GraphixQueryTranslatorExtension implements IStatementExecutorExtens
 
     @Override
     public void configure(List<Pair<String, String>> args) {
+        INSTANCE.setConfigFileProvidedOptions(args);
     }
 
     @Override

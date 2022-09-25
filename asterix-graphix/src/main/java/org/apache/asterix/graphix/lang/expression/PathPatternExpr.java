@@ -21,18 +21,23 @@ package org.apache.asterix.graphix.lang.expression;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractExpression;
 import org.apache.asterix.lang.common.clause.LetClause;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
- * A path is composed of a list of {@link VertexPatternExpr} instances and a list of {@link EdgePatternExpr} that
- * utilize the aforementioned vertices. Users can also optionally specify a variable, and attach {@link LetClause} nodes
- * to aid in lowering this expression (i.e. for lowering sub-paths).
+ * A path is composed of:
+ * <ul>
+ *  <li>A list of {@link VertexPatternExpr} instances.</li>
+ *  <li>A list of {@link EdgePatternExpr} instances that utilize the aforementioned vertices.</li>
+ *  <li>An optional variable binding all vertices and edges to a path record.</li>
+ *  <li>A list of {@link LetClause} nodes that represent expanded sub-paths.</li>
+ * </ul>
  */
 public class PathPatternExpr extends AbstractExpression {
     private final List<LetClause> reboundSubPathExpressions;
@@ -78,5 +83,14 @@ public class PathPatternExpr extends AbstractExpression {
     @Override
     public <R, T> R accept(ILangVisitor<R, T> visitor, T arg) throws CompilationException {
         return ((IGraphixLangVisitor<R, T>) visitor).visit(this, arg);
+    }
+
+    @Override
+    public String toString() {
+        String edgeString = edgeExpressions.stream().map(EdgePatternExpr::toString).collect(Collectors.joining(","));
+        String variableString = (variableExpr != null) ? (" AS " + variableExpr) : "";
+        return String.format("%s%s%s",
+                vertexExpressions.stream().map(VertexPatternExpr::toString).collect(Collectors.joining(",")),
+                (edgeString.equals("") ? "" : ", " + edgeString), variableString);
     }
 }

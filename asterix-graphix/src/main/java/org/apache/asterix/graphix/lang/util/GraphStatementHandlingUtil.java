@@ -30,16 +30,17 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.app.translator.GraphixQueryTranslator;
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.EdgeIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
+import org.apache.asterix.graphix.common.metadata.VertexIdentifier;
 import org.apache.asterix.graphix.extension.GraphixMetadataExtension;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.rewrites.GraphixQueryRewriter;
-import org.apache.asterix.graphix.lang.rewrites.visitor.AbstractGraphixQueryVisitor;
+import org.apache.asterix.graphix.lang.rewrite.GraphixQueryRewriter;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
 import org.apache.asterix.graphix.lang.statement.GraphElementDeclaration;
+import org.apache.asterix.graphix.lang.visitor.base.AbstractGraphixQueryVisitor;
 import org.apache.asterix.graphix.metadata.entity.dependency.DependencyIdentifier;
 import org.apache.asterix.graphix.metadata.entity.dependency.GraphRequirements;
 import org.apache.asterix.graphix.metadata.entity.dependency.IEntityRequirements;
@@ -139,7 +140,7 @@ public final class GraphStatementHandlingUtil {
                     schemaBuilder.addVertex(vertex.getLabel(), vertex.getPrimaryKeyFields(), vertex.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
-                    GraphElementIdentifier id = schemaVertex.getIdentifier();
+                    VertexIdentifier id = schemaVertex.getIdentifier();
                     GraphElementDeclaration decl = new GraphElementDeclaration(id, vertex.getExpression());
                     decl.setSourceLocation(vertex.getSourceLocation());
                     graphElementDeclarations.add(decl);
@@ -160,7 +161,7 @@ public final class GraphStatementHandlingUtil {
                             edge.getDestinationKeyFields(), edge.getSourceKeyFields(), edge.getDefinition());
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
-                    GraphElementIdentifier id = schemaEdge.getIdentifier();
+                    EdgeIdentifier id = schemaEdge.getIdentifier();
                     GraphElementDeclaration decl = new GraphElementDeclaration(id, edge.getExpression());
                     decl.setSourceLocation(edge.getSourceLocation());
                     graphElementDeclarations.add(decl);

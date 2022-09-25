@@ -29,7 +29,7 @@ import org.apache.asterix.om.base.AGeneratedUUID;
 
 /**
  * A collection of {@link org.apache.asterix.graphix.metadata.entity.schema.Graph} dependencies associated with a
- * {@link org.apache.asterix.metadata.entities.Function} instance. This does **not** include non-graph dependencies
+ * {@link org.apache.asterix.metadata.entities.Function} instance. This does <b>not</b> include non-graph dependencies
  * for functions.
  */
 public class FunctionRequirements implements IEntityRequirements {

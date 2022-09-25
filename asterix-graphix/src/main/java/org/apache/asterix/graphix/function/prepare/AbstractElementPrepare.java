@@ -26,7 +26,7 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
 import org.apache.asterix.graphix.lang.annotation.GraphixSchemaAnnotation;
-import org.apache.asterix.graphix.lang.rewrites.common.ElementLookupTable;
+import org.apache.asterix.graphix.lang.rewrite.common.ElementLookupTable;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.expression.FieldBinding;

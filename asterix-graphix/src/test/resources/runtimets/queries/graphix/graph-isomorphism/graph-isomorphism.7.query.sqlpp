@@ -18,7 +18,7 @@
  */
 
 // There should be results where (u) = (w) (i.e. only edge adjacency should be preserved).
-SET  `graphix.match-evaluation` "homomorphism";
+SET  `graphix.semantics.pattern` "homomorphism";
 FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (user_id)
                    AS Yelp.Users,

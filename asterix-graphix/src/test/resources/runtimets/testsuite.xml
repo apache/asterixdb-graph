@@ -20,6 +20,13 @@
             ResultOffsetPath="results"
             QueryOffsetPath="queries"
             QueryFileExtension=".sqlpp">
+  <test-group name="correlated-vertex-join">
+    <test-case FilePath="graphix">
+      <compilation-unit name="correlated-vertex-join">
+        <output-dir compare="Text">correlated-vertex-join</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
   <test-group name="create-drop-error">
     <test-case FilePath="graphix">
       <compilation-unit name="create-drop-error">
@@ -42,10 +49,12 @@
     </test-case>
   </test-group>
   <test-group name="dangling-vertices">
-    <test-case FilePath="graphix" check-warnings="true">
+    <!--<test-case FilePath="graphix" check-warnings="true">-->
+    <test-case FilePath="graphix" check-warnings="false">
       <compilation-unit name="dangling-vertices">
         <output-dir compare="Text">dangling-vertices</output-dir>
-        <expected-warn>Potential disconnected pattern encountered! A CROSS-JOIN has been introduced.</expected-warn>
+        <!--<expected-warn>Disconnected pattern encountered! A CROSS-JOIN may been introduced.</expected-warn>-->
+        <!--<expected-warn>Encountered a cross product join</expected-warn>-->
       </compilation-unit>
     </test-case>
   </test-group>
@@ -67,13 +76,6 @@
     <test-case FilePath="graphix">
       <compilation-unit name="graphix-functions">
         <output-dir compare="Text">graphix-functions</output-dir>
-      </compilation-unit>
-    </test-case>
-  </test-group>
-  <test-group name="inference-resolution">
-    <test-case FilePath="graphix" check-warnings="true">
-      <compilation-unit name="inference-resolution">
-        <output-dir compare="Text">inference-resolution</output-dir>
       </compilation-unit>
     </test-case>
   </test-group>
@@ -99,6 +101,7 @@
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
         <expected-error>Cannot resolve alias reference for undefined identifier invalidVariable</expected-error>
+        <expected-error>Encountered graph element that does not conform the queried graph schema!</expected-error>
       </compilation-unit>
     </test-case>
   </test-group>
@@ -109,10 +112,17 @@
       </compilation-unit>
     </test-case>
   </test-group>
-  <test-group name="scope-checking">
+  <test-group name="schema-resolution">
+    <test-case FilePath="graphix" check-warnings="true">
+      <compilation-unit name="schema-resolution">
+        <output-dir compare="Text">schema-resolution</output-dir>
+      </compilation-unit>
+    </test-case>
+  </test-group>
+  <test-group name="scope-validation">
     <test-case FilePath="graphix">
-      <compilation-unit name="scope-checking">
-        <output-dir compare="Text">scope-checking</output-dir>
+      <compilation-unit name="scope-validation">
+        <output-dir compare="Text">scope-validation</output-dir>
       </compilation-unit>
     </test-case>
   </test-group>

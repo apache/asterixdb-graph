@@ -1,0 +1,10 @@
+{ "u_record": { "review_id": "A" }, "v_user_id": 1 }
+{ "u_record": { "review_id": "B" }, "v_user_id": 1 }
+{ "u_record": { "review_id": "C" }, "v_user_id": 1 }
+{ "u_record": { "review_id": "D" }, "v_user_id": 2 }
+{ "u_record": { "review_id": "E" }, "v_user_id": 3 }
+{ "u_record": { "review_id": "F" }, "v_user_id": 4 }
+{ "u_record": { "user_id": 1 }, "v_user_id": 2 }
+{ "u_record": { "user_id": 1 }, "v_user_id": 3 }
+{ "u_record": { "user_id": 2 }, "v_user_id": 3 }
+{ "u_record": { "user_id": 3 }, "v_user_id": 4 }

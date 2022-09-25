@@ -23,16 +23,19 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractExpression;
 import org.apache.asterix.lang.common.base.AbstractLangExpression;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
- * An expression which describes the schema of a graph, containing a list of vertices ({@link VertexConstructor}) and
- * a list of edges ({@link EdgeConstructor}) that connect the aforementioned vertices.
+ * An expression which describes the schema of a graph, containing:
+ * <ul>
+ *  <li>A list of vertices ({@link VertexConstructor}).</li>
+ *  <li>A list of edges ({@link EdgeConstructor}) that connect the aforementioned vertices.</li>
+ * </ul>
  */
 public class GraphConstructor extends AbstractExpression {
     private final List<VertexConstructor> vertexConstructors;
@@ -88,9 +91,11 @@ public class GraphConstructor extends AbstractExpression {
 
     /**
      * A vertex constructor (not be confused with a query vertex) is composed of the following:
-     * - An AST containing the vertex body expression, as well as the raw body string itself.
-     * - A single vertex label that uniquely identifies the vertex.
-     * - A list of primary key fields, used in the JOIN clause with edges.
+     * <ul>
+     *  <li>An AST containing the vertex body expression, as well as the raw body string itself.</li>
+     *  <li>A single vertex label that uniquely identifies the vertex.</li>
+     *  <li>A list of primary key fields, used in the JOIN clause with edges.</li>
+     * </ul>
      */
     public static class VertexConstructor extends AbstractLangExpression {
         private final List<Integer> primaryKeySourceIndicators;
@@ -160,12 +165,14 @@ public class GraphConstructor extends AbstractExpression {
 
     /**
      * An edge constructor (not be confused with a query edge) is composed of the following:
-     * - An AST containing the edge body expression, as well as the raw body string itself.
-     * - A single edge label that uniquely identifies the edge.
-     * - A single label that denotes the source vertices of this edge, as well as another label that denotes the
-     * destination vertices of this edge.
-     * - A list of source key fields, used in the JOIN clause with the corresponding source vertices.
-     * - A list of destination key fields, used in the JOIN clause with the corresponding destination vertices.
+     * <ul>
+     *  <li>An AST containing the edge body expression, as well as the raw body string itself.</li>
+     *  <li>A single edge label that uniquely identifies the edge.</li>
+     *  <li>A single label that denotes the source vertices of this edge, as well as another label that denotes the
+     *  destination vertices of this edge.</li>
+     *  <li>A list of source key fields, used in the JOIN clause with the corresponding source vertices.</li>
+     *  <li>A list of destination key fields, used in the JOIN clause with the corresponding destination vertices.</li>
+     * </ul>
      */
     public static class EdgeConstructor extends AbstractLangExpression {
         private final List<Integer> destinationKeySourceIndicators;

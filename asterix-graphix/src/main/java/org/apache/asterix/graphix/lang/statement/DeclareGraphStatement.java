@@ -25,7 +25,7 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.metadata.DataverseName;
 import org.apache.asterix.graphix.app.translator.GraphixQueryTranslator;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.translator.IRequestParameters;
@@ -33,7 +33,7 @@ import org.apache.asterix.translator.IStatementExecutor;
 import org.apache.hyracks.api.client.IHyracksClientConnection;
 
 /**
- * Statement for storing a {@link GraphConstructor} instance in our _context_ instead of our metadata.
+ * Statement for storing a {@link GraphConstructor} instance in our <i>context</i> instead of our metadata.
  */
 public class DeclareGraphStatement extends ExtensionStatement {
     private final GraphConstructor graphConstructor;

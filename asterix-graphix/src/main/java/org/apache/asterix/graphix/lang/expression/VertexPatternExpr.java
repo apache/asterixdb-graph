@@ -24,29 +24,40 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.common.metadata.VertexIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractExpression;
+import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.VariableExpr;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
- * A query vertex (not to be confused with a vertex constructor) is composed of a set of labels (which may be empty)
- * and a variable (which may initially be null).
+ * A query vertex (not to be confused with a vertex constructor) is composed of:
+ * <ul>
+ *  <li>A set of labels (which may be empty).</li>
+ *  <li>A variable (which may initially be null).</li>
+ *  <li>A filter expression (which may be null).</li>
+ * </ul>
  */
 public class VertexPatternExpr extends AbstractExpression {
     private final Set<ElementLabel> labels;
+    private final Expression filterExpr;
     private VariableExpr variableExpr;
 
-    public VertexPatternExpr(VariableExpr variableExpr, Set<ElementLabel> labels) {
+    public VertexPatternExpr(VariableExpr variableExpr, Expression filterExpr, Set<ElementLabel> labels) {
         this.variableExpr = variableExpr;
+        this.filterExpr = filterExpr;
         this.labels = labels;
     }
 
     public Set<ElementLabel> getLabels() {
         return labels;
+    }
+
+    public Expression getFilterExpr() {
+        return filterExpr;
     }
 
     public VariableExpr getVariableExpr() {
@@ -57,10 +68,8 @@ public class VertexPatternExpr extends AbstractExpression {
         this.variableExpr = variableExpr;
     }
 
-    public List<GraphElementIdentifier> generateIdentifiers(GraphIdentifier graphIdentifier) {
-        return labels.stream()
-                .map(v -> new GraphElementIdentifier(graphIdentifier, GraphElementIdentifier.Kind.VERTEX, v))
-                .collect(Collectors.toList());
+    public List<VertexIdentifier> generateIdentifiers(GraphIdentifier graphIdentifier) {
+        return labels.stream().map(v -> new VertexIdentifier(graphIdentifier, v)).collect(Collectors.toList());
     }
 
     @Override
@@ -77,14 +86,16 @@ public class VertexPatternExpr extends AbstractExpression {
             return false;
         }
         VertexPatternExpr that = (VertexPatternExpr) object;
-        return Objects.equals(this.labels, that.labels) && Objects.equals(this.variableExpr, that.variableExpr);
+        return Objects.equals(this.labels, that.labels) && Objects.equals(this.variableExpr, that.variableExpr)
+                && Objects.equals(this.filterExpr, that.filterExpr);
     }
 
     @Override
     public String toString() {
         String labelsString = labels.stream().map(ElementLabel::toString).collect(Collectors.joining("|"));
         String variableString = (variableExpr != null) ? variableExpr.getVar().toString() : "";
-        return String.format("(%s:%s)", variableString, labelsString);
+        String filterString = (filterExpr != null) ? (" WHERE " + filterExpr + " ") : "";
+        return String.format("(%s:%s%s)", variableString, labelsString, filterString);
     }
 
     @Override

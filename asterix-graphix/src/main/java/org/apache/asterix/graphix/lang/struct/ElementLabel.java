@@ -21,41 +21,36 @@ package org.apache.asterix.graphix.lang.struct;
 import java.io.Serializable;
 import java.util.Objects;
 
+/**
+ * Label for a vertex, uniquely identified by the label name.
+ */
 public class ElementLabel implements Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private final String labelName;
-    private boolean isInferred;
+    private final boolean isNegated;
 
-    public ElementLabel(String labelName) {
-        this(labelName, false);
-    }
-
-    private ElementLabel(String labelName, boolean isInferred) {
+    public ElementLabel(String labelName, boolean isNegated) {
         this.labelName = Objects.requireNonNull(labelName);
-        this.isInferred = isInferred;
+        this.isNegated = isNegated;
     }
 
-    public ElementLabel asInferred() {
-        return new ElementLabel(labelName, true);
+    public boolean isNegated() {
+        return isNegated;
     }
 
-    public void markInferred(boolean isInferred) {
-        this.isInferred = isInferred;
-    }
-
-    public boolean isInferred() {
-        return isInferred;
-    }
-
-    @Override
-    public String toString() {
+    public String getLabelName() {
         return labelName;
     }
 
     @Override
+    public String toString() {
+        return (isNegated ? "NOT " : "") + labelName;
+    }
+
+    @Override
     public int hashCode() {
-        return Objects.hashCode(labelName);
+        return Objects.hash(labelName, isNegated);
     }
 
     @Override
@@ -65,7 +60,7 @@ public class ElementLabel implements Serializable {
         }
         if (o instanceof ElementLabel) {
             ElementLabel that = (ElementLabel) o;
-            return this.labelName.equals(that.labelName);
+            return this.labelName.equals(that.labelName) && this.isNegated == that.isNegated;
         }
         return false;
     }

@@ -23,9 +23,9 @@ import java.util.Objects;
 import org.apache.asterix.algebra.extension.ExtensionStatement;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.common.metadata.IElementIdentifier;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
@@ -38,16 +38,16 @@ import org.apache.hyracks.api.client.IHyracksClientConnection;
  * use this class to store the directly parsed AST and a normalized AST for the bodies themselves.
  */
 public final class GraphElementDeclaration extends ExtensionStatement {
-    private final GraphElementIdentifier identifier;
+    private final IElementIdentifier identifier;
     private final Expression rawBody;
     private Expression normalizedBody;
 
-    public GraphElementDeclaration(GraphElementIdentifier identifier, Expression rawBody) {
+    public GraphElementDeclaration(IElementIdentifier identifier, Expression rawBody) {
         this.identifier = Objects.requireNonNull(identifier);
         this.rawBody = Objects.requireNonNull(rawBody);
     }
 
-    public GraphElementIdentifier getIdentifier() {
+    public IElementIdentifier getIdentifier() {
         return identifier;
     }
 

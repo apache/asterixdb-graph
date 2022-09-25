@@ -21,8 +21,8 @@ package org.apache.asterix.graphix.function.rewrite;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
-import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
-import org.apache.asterix.graphix.lang.rewrites.lower.action.PathPatternAction;
+import org.apache.asterix.graphix.lang.rewrite.GraphixRewritingContext;
+import org.apache.asterix.graphix.type.MaterializePathTypeComputer;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.expression.FieldAccessor;
@@ -36,7 +36,7 @@ public class PathVerticesRewrite implements IFunctionRewrite {
             throw new CompilationException(ErrorCode.ILLEGAL_FUNCTION_USE, callExpr.getSourceLocation(),
                     GraphixFunctionIdentifiers.PATH_VERTICES.toString());
         }
-        Identifier pathVertexIdentifier = new Identifier(PathPatternAction.PATH_VERTICES_FIELD_NAME);
+        Identifier pathVertexIdentifier = new Identifier(MaterializePathTypeComputer.VERTICES_FIELD_NAME);
         FieldAccessor pathVertexAccess = new FieldAccessor(callExpr.getExprList().get(0), pathVertexIdentifier);
         pathVertexAccess.setSourceLocation(callExpr.getSourceLocation());
         return pathVertexAccess;

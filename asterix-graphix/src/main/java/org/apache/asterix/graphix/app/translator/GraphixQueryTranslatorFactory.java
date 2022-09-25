@@ -28,12 +28,20 @@ import org.apache.asterix.common.dataflow.ICcApplicationContext;
 import org.apache.asterix.compiler.provider.ILangCompilationProvider;
 import org.apache.asterix.lang.common.base.Statement;
 import org.apache.asterix.translator.SessionOutput;
+import org.apache.hyracks.algebricks.common.utils.Pair;
 
 public class GraphixQueryTranslatorFactory extends DefaultStatementExecutorFactory {
+    private List<Pair<String, String>> configFileProvidedOptions;
+
     @Override
     public QueryTranslator create(ICcApplicationContext appCtx, List<Statement> statements, SessionOutput output,
             ILangCompilationProvider compilationProvider, IStorageComponentProvider storageComponentProvider,
             IResponsePrinter printer) {
-        return new GraphixQueryTranslator(appCtx, statements, output, compilationProvider, executorService, printer);
+        return new GraphixQueryTranslator(appCtx, statements, output, compilationProvider, executorService, printer,
+                configFileProvidedOptions);
+    }
+
+    public void setConfigFileProvidedOptions(List<Pair<String, String>> configFileProvidedOptions) {
+        this.configFileProvidedOptions = configFileProvidedOptions;
     }
 }

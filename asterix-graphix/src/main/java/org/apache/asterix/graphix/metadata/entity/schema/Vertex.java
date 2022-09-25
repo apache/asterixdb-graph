@@ -21,26 +21,28 @@ package org.apache.asterix.graphix.metadata.entity.schema;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.VertexIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 
 /**
  * Metadata representation of a vertex. A vertex consists of the following:
- * 1. A {@link GraphElementIdentifier}, to uniquely identify the vertex across other graph elements.
- * 2. A list of primary key fields, associated with the definition body.
- * 3. A SQL++ string denoting the definition body.
+ * <ul>
+ *  <li>A {@link VertexIdentifier}, to uniquely identify the vertex across other graph elements.</li>
+ *  <li>A list of primary key fields, associated with the definition body.</li>
+ *  <li>A SQL++ string denoting the definition body.</li>
+ * </ul>
  */
 public class Vertex implements IElement {
     private static final long serialVersionUID = 1L;
 
-    private final GraphElementIdentifier identifier;
+    private final VertexIdentifier identifier;
     private final List<List<String>> primaryKeyFieldNames;
     private final String definitionBody;
 
     /**
      * Use {@link Schema.Builder} to build Vertex instances instead of this constructor.
      */
-    Vertex(GraphElementIdentifier identifier, List<List<String>> primaryKeyFieldNames, String definitionBody) {
+    Vertex(VertexIdentifier identifier, List<List<String>> primaryKeyFieldNames, String definitionBody) {
         this.identifier = Objects.requireNonNull(identifier);
         this.primaryKeyFieldNames = primaryKeyFieldNames;
         this.definitionBody = Objects.requireNonNull(definitionBody);
@@ -51,13 +53,13 @@ public class Vertex implements IElement {
     }
 
     @Override
-    public GraphElementIdentifier getIdentifier() {
+    public VertexIdentifier getIdentifier() {
         return identifier;
     }
 
     @Override
     public ElementLabel getLabel() {
-        return identifier.getElementLabel();
+        return identifier.getVertexLabel();
     }
 
     @Override

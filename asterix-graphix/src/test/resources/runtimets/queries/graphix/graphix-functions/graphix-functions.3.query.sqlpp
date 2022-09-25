@@ -25,6 +25,6 @@ FROM GRAPH  VERTEX (:User)
                    PRIMARY KEY (review_id)
                    AS Yelp.Reviews
 MATCH       (n)
-SELECT      LABEL(n) AS vertexLabel,
+SELECT      LABEL(n) AS elementLabel,
             VERTEX_DETAIL(n) AS vertexDetail
 ORDER BY    n;

@@ -18,17 +18,19 @@
 //
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.IElementIdentifier;
+import org.apache.asterix.graphix.lang.annotation.ElementEvaluationAnnotation;
 import org.apache.asterix.graphix.lang.clause.FromGraphClause;
-import org.apache.asterix.graphix.lang.clause.GraphSelectBlock;
 import org.apache.asterix.graphix.lang.clause.MatchClause;
 import org.apache.asterix.graphix.lang.expression.EdgePatternExpr;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
 import org.apache.asterix.graphix.lang.expression.PathPatternExpr;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
 import org.apache.asterix.graphix.lang.optype.MatchType;
+import org.apache.asterix.graphix.lang.parser.GraphixParserHint;
 import org.apache.asterix.graphix.lang.statement.CreateGraphStatement;
 import org.apache.asterix.graphix.lang.statement.DeclareGraphStatement;
 import org.apache.asterix.graphix.lang.statement.GraphDropStatement;
@@ -40,7 +42,7 @@ import org.apache.asterix.lang.sqlpp.parser.SqlppParseException;
 import org.apache.asterix.lang.sqlpp.parser.Token;
 
 @new_at_the_class_def
-public GraphElementDeclaration parseGraphElementBody(GraphElementIdentifier identifier) throws CompilationException {
+public GraphElementDeclaration parseGraphElementBody(IElementIdentifier identifier) throws CompilationException {
     return parseImpl(new ParseFunction<GraphElementDeclaration>() {
         @Override
         public GraphElementDeclaration parse() throws ParseException {
@@ -56,6 +58,35 @@ public GraphElementDeclaration parseGraphElementBody(GraphElementIdentifier iden
             return new GraphElementDeclaration(identifier, elementBodyExpr);
         }
     });
+}
+
+@new_at_the_class_def
+public GraphixParserHint fetchGraphixHint(Token token, GraphixParserHint[] expectedHints) {
+    if (token == null) {
+      return null;
+    }
+    Token hintToken = token.specialToken;
+
+    // We have a hint. Pull this from our collector.
+    if (hintToken == null) {
+      return null;
+    }
+    SourceLocation sourceLoc = getSourceLocation(hintToken);
+    hintCollector.remove(sourceLoc);
+
+    // Check for Graphix hints.
+    if (hintToken.hint != null) {
+        // A Graphix hint is not a SQLPP hint, so we shouldn't get anything in the "hint" field.
+        warnUnexpectedHint(hintToken.hint.getIdentifier(), sourceLoc, StringUtil.join(expectedHints, ", ", "\""));
+
+    } else if (hintToken.hintParams != null) {
+        for (GraphixParserHint graphixHint : expectedHints) {
+            if (graphixHint.getId().equals(hintToken.hintParams)) {
+                return graphixHint;
+            }
+        }
+    }
+    return null;
 }
 
 @override
@@ -146,8 +177,8 @@ SelectBlock SelectBlock() throws ParseException:
       return selectBlock;
 
     } else {
-      GraphSelectBlock selectBlock = new GraphSelectBlock(selectClause, fromGraphClause,
-        fromLetWhereClauses, groupbyClause, gbyLetHavingClauses);
+      SelectBlock selectBlock = new SelectBlock(selectClause, fromGraphClause, fromLetWhereClauses,
+        groupbyClause, gbyLetHavingClauses);
       selectBlock.setSourceLocation(startSrcLoc);
       return selectBlock;
     }
@@ -389,11 +420,11 @@ GraphConstructor.VertexConstructor GraphVertexSpecification(Token startStmtToken
   Token beginPos = null, endPos = null;
   int positionOffset = 0;
   Expression vertexDefinitionExpr;
-  ElementLabel vertexLabel;
+  ElementLabel elementLabel;
 }
 {
   <VERTEX>
-  vertexLabel = GraphVertexDefinitionPattern()
+  elementLabel = GraphVertexDefinitionPattern()
   <PRIMARY> <KEY> <LEFTPAREN> primaryKeyFields = KeyFields() <RIGHTPAREN>
   <AS>
   {
@@ -408,7 +439,7 @@ GraphConstructor.VertexConstructor GraphVertexSpecification(Token startStmtToken
     String vDef = extractFragment(beginPos.beginLine, beginPos.beginColumn + positionOffset, endPos.endLine,
       endPos.endColumn + 1);
     removeCurrentScope();
-    GraphConstructor.VertexConstructor vertexConstructor = new GraphConstructor.VertexConstructor(vertexLabel,
+    GraphConstructor.VertexConstructor vertexConstructor = new GraphConstructor.VertexConstructor(elementLabel,
       primaryKeyFields.second, primaryKeyFields.first, vertexDefinitionExpr, vDef);
     return addSourceLocation(vertexConstructor, startStmtToken);
   }
@@ -422,7 +453,7 @@ ElementLabel GraphVertexDefinitionPattern() throws ParseException:
 {
   <LEFTPAREN> <COLON> vertexName = Identifier() <RIGHTPAREN>
   {
-    return new ElementLabel(vertexName);
+    return new ElementLabel(vertexName, false);
   }
 }
 
@@ -494,18 +525,18 @@ GraphConstructor.EdgeConstructor GraphEdgeSpecification(Token startStmtToken) th
 @new
 Pair<Triple<ElementLabel, ElementLabel, ElementLabel>, Boolean> GraphEdgeDefinitionPattern() throws ParseException:
 {
-  ElementLabel leftVertexLabel, rightVertexLabel;
+  ElementLabel leftElementLabel, rightElementLabel;
   boolean isDirectedLeft;
   String edgeName;
 }
 {
-  leftVertexLabel = GraphVertexDefinitionPattern()
+  leftElementLabel = GraphVertexDefinitionPattern()
   ( <MINUS> <LEFTBRACKET> <COLON> edgeName = Identifier() <RIGHTBRACKET> <MINUS> <GT> { isDirectedLeft = false; }
   | <LT> <MINUS> <LEFTBRACKET> <COLON> edgeName = Identifier() <RIGHTBRACKET> <MINUS> { isDirectedLeft = true; } )
-  rightVertexLabel = GraphVertexDefinitionPattern()
+  rightElementLabel = GraphVertexDefinitionPattern()
   {
     Triple<ElementLabel, ElementLabel, ElementLabel> t = new Triple<ElementLabel, ElementLabel, ElementLabel>(
-      leftVertexLabel, new ElementLabel(edgeName), rightVertexLabel);
+      leftElementLabel, new ElementLabel(edgeName, false), rightElementLabel);
     return new Pair<Triple<ElementLabel, ElementLabel, ElementLabel>, Boolean>(t, isDirectedLeft);
   }
 }
@@ -603,7 +634,7 @@ PathPatternExpr PathPatternExpression() throws ParseException:
 
   Token startToken = null, edgeStartToken = null;
   VertexPatternExpr vertexExpr = null;
-  EdgeDescriptor edgeDescriptor = null;
+  Pair<EdgeDescriptor, List<IExpressionAnnotation>> edgeDescriptorPair = null;
 }
 {
   vertexExpr = VertexPatternExpression()
@@ -612,11 +643,16 @@ PathPatternExpr PathPatternExpression() throws ParseException:
     orderedVertexExpressions.add(vertexExpr);
   }
   (
-    edgeDescriptor = EdgeDescriptor() { edgeStartToken = token; }
+    edgeDescriptorPair = EdgeDescriptorPair() { edgeStartToken = token; }
     vertexExpr = VertexPatternExpression()
     {
       VertexPatternExpr leftVertex = orderedVertexExpressions.get(orderedVertexExpressions.size() - 1);
-      EdgePatternExpr edgePattern = new EdgePatternExpr(leftVertex, vertexExpr, edgeDescriptor);
+      EdgePatternExpr edgePattern = new EdgePatternExpr(leftVertex, vertexExpr, edgeDescriptorPair.first);
+      if (!edgeDescriptorPair.second.isEmpty()) {
+        for (IExpressionAnnotation annotation : edgeDescriptorPair.second) {
+          edgePattern.addHint(annotation);
+        }
+      }
       orderedEdgeExpressions.add(addSourceLocation(edgePattern, edgeStartToken));
       orderedVertexExpressions.add(vertexExpr);
     }
@@ -630,33 +666,44 @@ PathPatternExpr PathPatternExpression() throws ParseException:
 @new
 VertexPatternExpr VertexPatternExpression() throws ParseException:
 {
-  Set<ElementLabel> vertexLabels = new HashSet<ElementLabel>();
+  Set<String> vertexLabels = new HashSet<String>();
   VariableExpr variableExpr = null;
+  Expression filterExpr = null;
+  boolean isNegatedLabelSet = false;
   Token startToken = null;
   String vertexLabelName;
 }
 {
   <LEFTPAREN> { startToken = token; }
+  ( variableExpr = Variable() )?
   (
-    variableExpr = Variable()
+    <COLON>
+    ( <CARET> { isNegatedLabelSet = true; } )?
+    vertexLabels = ParenthesizedLabelValueSet()
   )?
-  (
-    <COLON> vertexLabelName = Identifier() { vertexLabels.add(new ElementLabel(vertexLabelName)); }
-    ( <BAR> vertexLabelName = Identifier() { vertexLabels.add(new ElementLabel(vertexLabelName)); } )*
-  )?
+  ( <WHERE> filterExpr = Expression() )?
   <RIGHTPAREN>
   {
-    VertexPatternExpr vertexExpression = new VertexPatternExpr(variableExpr, vertexLabels);
+    // Construct our label set.
+    Set<ElementLabel> labels = new HashSet<ElementLabel>();
+    for (String vertexLabelValue : vertexLabels) {
+      labels.add(new ElementLabel(vertexLabelValue, isNegatedLabelSet));
+    }
+    VertexPatternExpr vertexExpression = new VertexPatternExpr(variableExpr, filterExpr, labels);
     return addSourceLocation(vertexExpression, startToken);
   }
 }
 
 @new
-EdgeDescriptor EdgeDescriptor() throws ParseException:
+Pair<EdgeDescriptor, List<IExpressionAnnotation>> EdgeDescriptorPair() throws ParseException:
 {
-  Pair<Set<ElementLabel>, Pair<Integer, Integer>> edgeDetail = null;
-  Token startToken = null;
+  GraphixParserHint[] expectedHints = { GraphixParserHint.EXPAND_AND_UNION_HINT,
+                                        GraphixParserHint.SWITCH_AND_CYCLE_HINT };
+  List<IExpressionAnnotation> hintList = new ArrayList<IExpressionAnnotation>();
+  Triple<Set<ElementLabel>, Pair<Integer, Integer>, Expression> edgeDetail = null;
+  Token startToken = null, hintToken = null;
   VariableExpr edgeVariable = null;
+  Expression filterExpr = null;
 
   // We default to undirected edges.
   EdgeDescriptor.EdgeDirection edgeDirection = EdgeDescriptor.EdgeDirection.UNDIRECTED;
@@ -666,11 +713,9 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
     <MINUS> { startToken = token; }
     (
       <LEFTBRACKET>
-      (
-        edgeVariable = Variable()
-      )?
-      ( <COLON> edgeDetail = EdgeDetail() )?
-      <RIGHTBRACKET> <MINUS>
+      ( edgeVariable = Variable() )?
+      ( edgeDetail = EdgeDetail() )?
+      <RIGHTBRACKET> { hintToken = token; } <MINUS>
     )?
     ( <GT> { edgeDirection = EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT; } )?
     |
@@ -681,14 +726,21 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
     <MINUS>
     (
       <LEFTBRACKET>
-      (
-        edgeVariable = Variable()
-      )?
-      ( <COLON> edgeDetail = EdgeDetail() )?
-      <RIGHTBRACKET> <MINUS>
+      ( edgeVariable = Variable() )?
+      ( edgeDetail = EdgeDetail() )?
+      <RIGHTBRACKET> { hintToken = token; } <MINUS>
     )?
   )
   {
+    // See if we have an evaluation hint.
+    GraphixParserHint evalHint = fetchGraphixHint(hintToken, expectedHints);
+    if (Objects.equals(evalHint, GraphixParserHint.EXPAND_AND_UNION_HINT)) {
+      hintList.add(new ElementEvaluationAnnotation(ElementEvaluationAnnotation.Kind.EXPAND_AND_UNION));
+
+    } else if (Objects.equals(evalHint, GraphixParserHint.SWITCH_AND_CYCLE_HINT)) {
+      hintList.add(new ElementEvaluationAnnotation(ElementEvaluationAnnotation.Kind.SWITCH_AND_CYCLE));
+    }
+
     // Edges (by default) are of pattern type EDGE and are not sub-paths.
     EdgeDescriptor.PatternType patternType = EdgeDescriptor.PatternType.EDGE;
     Integer hopCountMin = 1;
@@ -697,6 +749,7 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
     Set<ElementLabel> labels = new HashSet<ElementLabel>();
     if (edgeDetail != null) {
       labels = edgeDetail.first;
+      filterExpr = edgeDetail.third;
 
       // We have explicitly specified "{" and "}". Use sub-path semantics.
       if (edgeDetail.second != null) {
@@ -705,42 +758,71 @@ EdgeDescriptor EdgeDescriptor() throws ParseException:
         hopCountMax = edgeDetail.second.second;
       }
     }
-
-    return new EdgeDescriptor(edgeDirection, patternType, labels, edgeVariable, hopCountMin, hopCountMax);
+    EdgeDescriptor edgeDescriptor =
+      new EdgeDescriptor(edgeDirection, patternType, labels, filterExpr, edgeVariable, hopCountMin, hopCountMax);
+    return new Pair<EdgeDescriptor, List<IExpressionAnnotation>>(edgeDescriptor, hintList);
   }
 }
 
 @new
-Pair<Set<ElementLabel>, Pair<Integer, Integer>> EdgeDetail() throws ParseException:
+Triple<Set<ElementLabel>, Pair<Integer, Integer>, Expression> EdgeDetail() throws ParseException:
 {
-  Set<ElementLabel> edgeLabels = new HashSet<ElementLabel>();
+  Set<String> edgeLabels = new HashSet<String>();
   Pair<Integer, Integer> repetitionQuantifier = null;
+  Expression filterExpr = null;
+  boolean isNegatedLabelSet = false;
   String labelName = null;
 }
 {
   (
-    // Note: we want to forbid LABEL_1|LABEL_2{...}.
-    LOOKAHEAD(2, <BAR>)
-    (
-      labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); }
-      <BAR> labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); }
-      ( <BAR> labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); } )*
-    )
-    |
-    (
-      labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); }
-      |
-      <LEFTPAREN>
-      labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); }
-      ( <BAR> labelName = Identifier() { edgeLabels.add(new ElementLabel(labelName)); } )*
-      <RIGHTPAREN>
-    )
-    ( repetitionQuantifier = EdgeRepetitionQuantifier() )?
-    |
     ( repetitionQuantifier = EdgeRepetitionQuantifier() )
+    |
+    (
+      <COLON>
+      ( <CARET> { isNegatedLabelSet = true; } )?
+      edgeLabels = ParenthesizedLabelValueSet()
+      ( LOOKAHEAD(2)
+        ( <WHERE> filterExpr = Expression() )
+        |
+        ( repetitionQuantifier = EdgeRepetitionQuantifier() )
+      )?
+    )
+    |
+    ( <WHERE> filterExpr = Expression() )
   )
   {
-    return new Pair<Set<ElementLabel>, Pair<Integer, Integer>> (edgeLabels, repetitionQuantifier);
+    // Construct our label set.
+    Set<ElementLabel> labels = new HashSet<ElementLabel>();
+    for (String edgeLabelValue : edgeLabels) {
+      labels.add(new ElementLabel(edgeLabelValue, isNegatedLabelSet));
+    }
+    return new Triple<Set<ElementLabel>, Pair<Integer, Integer>, Expression> (labels, repetitionQuantifier, filterExpr);
+  }
+}
+
+@new
+Set<String> ParenthesizedLabelValueSet() throws ParseException:
+{
+  Set<String> labelSet = new HashSet<String>();
+  Set<String> innerLabelSet = null;
+  String labelName = null;
+}
+{
+  (
+    ( labelName = Identifier() { labelSet.add(labelName); } )
+    |
+    (
+      <LEFTPAREN>
+      innerLabelSet = ParenthesizedLabelValueSet() { labelSet.addAll(innerLabelSet); }
+      (
+        <BAR>
+        innerLabelSet = ParenthesizedLabelValueSet() { labelSet.addAll(innerLabelSet); }
+      )*
+      <RIGHTPAREN>
+    )
+  )
+  {
+    return labelSet;
   }
 }
 
@@ -751,12 +833,17 @@ Pair<Integer, Integer> EdgeRepetitionQuantifier() throws ParseException:
   Integer hopCountMax = null;
 }
 {
-  <LEFTBRACE>
-  ( // Note: we forbid unbounded edge repetition.
-    ( <INTEGER_LITERAL> { hopCountMin = Integer.valueOf(token.image); } )?
-    <COMMA> <INTEGER_LITERAL> { hopCountMax = Integer.valueOf(token.image); }
+  (
+    <PLUS>
+    |
+    (
+      <LEFTBRACE>
+      ( <INTEGER_LITERAL> { hopCountMin = Integer.valueOf(token.image); } )?
+      <COMMA>
+      ( <INTEGER_LITERAL> { hopCountMax = Integer.valueOf(token.image); } )?
+      <RIGHTBRACE>
+    )
   )
-  <RIGHTBRACE>
   {
     return new Pair<Integer, Integer>(hopCountMin, hopCountMax);
   }

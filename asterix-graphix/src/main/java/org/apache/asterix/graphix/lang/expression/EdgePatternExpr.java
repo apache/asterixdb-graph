@@ -24,33 +24,39 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
+import org.apache.asterix.graphix.common.metadata.EdgeIdentifier;
+import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
 import org.apache.asterix.graphix.lang.struct.EdgeDescriptor;
+import org.apache.asterix.graphix.lang.struct.ElementLabel;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.base.AbstractExpression;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 
 /**
- * A query edge (not to be confused with an edge constructor) is composed of a {@link EdgeDescriptor} (containing the
- * edge labels, an optional edge variable, and the hop range), an list of optional internal {@link VertexPatternExpr}
- * instances, a left {@link VertexPatternExpr}, and a right {@link VertexPatternExpr}.
+ * A query edge (not to be confused with an edge constructor) is composed of:
+ * <ul>
+ *  <li>A {@link EdgeDescriptor} (containing the edge labels, an optional edge variable, and the hop range).</li>
+ *  <li>An optional internal {@link VertexPatternExpr}.</li>
+ *  <li>A left {@link VertexPatternExpr}.</li>
+ *  <li>A right {@link VertexPatternExpr}.</li>
+ * </ul>
  */
 public class EdgePatternExpr extends AbstractExpression {
-    private final List<VertexPatternExpr> internalVertices;
     private final EdgeDescriptor edgeDescriptor;
     private VertexPatternExpr leftVertex;
     private VertexPatternExpr rightVertex;
+    private VertexPatternExpr internalVertex;
 
     public EdgePatternExpr(VertexPatternExpr leftVertex, VertexPatternExpr rightVertex, EdgeDescriptor edgeDescriptor) {
         this.leftVertex = Objects.requireNonNull(leftVertex);
         this.rightVertex = Objects.requireNonNull(rightVertex);
         this.edgeDescriptor = Objects.requireNonNull(edgeDescriptor);
-        this.internalVertices = new ArrayList<>();
-
         if (edgeDescriptor.getPatternType() == EdgeDescriptor.PatternType.PATH) {
             // If we have a sub-path, we have an internal vertex that we need to manage.
-            for (int i = 0; i < edgeDescriptor.getMaximumHops() - 1; i++) {
-                this.internalVertices.add(new VertexPatternExpr(null, new HashSet<>()));
-            }
+            this.internalVertex = new VertexPatternExpr(null, null, new HashSet<>());
+
+        } else {
+            this.internalVertex = null;
         }
     }
 
@@ -62,12 +68,12 @@ public class EdgePatternExpr extends AbstractExpression {
         return rightVertex;
     }
 
-    public EdgeDescriptor getEdgeDescriptor() {
-        return edgeDescriptor;
+    public VertexPatternExpr getInternalVertex() {
+        return internalVertex;
     }
 
-    public List<VertexPatternExpr> getInternalVertices() {
-        return internalVertices;
+    public EdgeDescriptor getEdgeDescriptor() {
+        return edgeDescriptor;
     }
 
     public void setLeftVertex(VertexPatternExpr leftVertex) {
@@ -78,14 +84,30 @@ public class EdgePatternExpr extends AbstractExpression {
         this.rightVertex = rightVertex;
     }
 
-    public void replaceInternalVertices(List<VertexPatternExpr> internalVertices) {
-        this.internalVertices.clear();
-        this.internalVertices.addAll(internalVertices);
+    public void setInternalVertex(VertexPatternExpr internalVertex) {
+        this.internalVertex = internalVertex;
+    }
+
+    public List<EdgeIdentifier> generateIdentifiers(GraphIdentifier graphIdentifier) {
+        List<EdgeIdentifier> edgeIdentifiers = new ArrayList<>();
+        for (ElementLabel leftLabel : leftVertex.getLabels()) {
+            for (ElementLabel rightLabel : rightVertex.getLabels()) {
+                for (ElementLabel edgeLabel : edgeDescriptor.getEdgeLabels()) {
+                    if (edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.RIGHT_TO_LEFT) {
+                        edgeIdentifiers.add(new EdgeIdentifier(graphIdentifier, leftLabel, edgeLabel, rightLabel));
+                    }
+                    if (edgeDescriptor.getEdgeDirection() != EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT) {
+                        edgeIdentifiers.add(new EdgeIdentifier(graphIdentifier, rightLabel, edgeLabel, leftLabel));
+                    }
+                }
+            }
+        }
+        return edgeIdentifiers;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(leftVertex, rightVertex, edgeDescriptor, internalVertices);
+        return Objects.hash(leftVertex, rightVertex, internalVertex, edgeDescriptor);
     }
 
     @Override
@@ -98,8 +120,8 @@ public class EdgePatternExpr extends AbstractExpression {
         }
         EdgePatternExpr that = (EdgePatternExpr) object;
         return Objects.equals(this.leftVertex, that.leftVertex) && Objects.equals(this.rightVertex, that.rightVertex)
-                && Objects.equals(this.edgeDescriptor, that.edgeDescriptor)
-                && Objects.equals(this.internalVertices, that.internalVertices);
+                && Objects.equals(this.internalVertex, that.internalVertex)
+                && Objects.equals(this.edgeDescriptor, that.edgeDescriptor);
     }
 
     @Override

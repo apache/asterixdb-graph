@@ -29,7 +29,7 @@ import org.apache.asterix.om.base.AGeneratedUUID;
 
 /**
  * A collection of {@link org.apache.asterix.graphix.metadata.entity.schema.Graph} dependencies associated with a view
- * instance. This does **not** include non-graph dependencies for views.
+ * instance. This does <b>not</b> include non-graph dependencies for views.
  */
 public class ViewRequirements implements IEntityRequirements {
     private static final long serialVersionUID = 1L;

@@ -42,9 +42,9 @@ public class EdgeSourceVertexPrepare extends AbstractElementPrepare {
         EdgeDescriptor.EdgeDirection edgeDirection = edgeDescriptor.getEdgeDirection();
         VertexPatternExpr sourceVertexExpr = (edgeDirection == EdgeDescriptor.EdgeDirection.LEFT_TO_RIGHT)
                 ? edgePatternExpr.getLeftVertex() : edgePatternExpr.getRightVertex();
-        VariableExpr sourceVariableExpr = new VariableExpr(sourceVertexExpr.getVariableExpr().getVar());
+        VariableExpr sourceVariableExprCopy = new VariableExpr(sourceVertexExpr.getVariableExpr().getVar());
         LiteralExpr fieldNameExpr = new LiteralExpr(new StringLiteral(IDENTIFIER.getValue()));
-        FieldBinding fieldBinding = new FieldBinding(fieldNameExpr, sourceVariableExpr);
+        FieldBinding fieldBinding = new FieldBinding(fieldNameExpr, sourceVariableExprCopy);
         schemaRecord.getFbList().add(fieldBinding);
     }
 }

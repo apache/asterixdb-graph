@@ -20,7 +20,7 @@ package org.apache.asterix.graphix.function.prepare;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
-import org.apache.asterix.graphix.lang.rewrites.common.ElementLookupTable;
+import org.apache.asterix.graphix.lang.rewrite.common.ElementLookupTable;
 import org.apache.asterix.lang.common.base.Expression;
 
 @FunctionalInterface

@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.asterix.common.exceptions.CompilationException;
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.VertexIdentifier;
 import org.apache.asterix.graphix.lang.expression.VertexPatternExpr;
-import org.apache.asterix.graphix.lang.rewrites.util.LowerRewritingUtil;
+import org.apache.asterix.graphix.lang.rewrite.util.LowerRewritingUtil;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.FieldBinding;
 import org.apache.asterix.lang.common.expression.ListConstructor;
@@ -59,7 +59,7 @@ public class VertexDetailPrepare extends AbstractElementPrepare {
         elementLabelPrepare.transformRecord(detailRecord, inputExpr, sourceExpr);
 
         // Insert our vertex-key into our detail record.
-        GraphElementIdentifier vertexIdentifier = vertexPatternExpr.generateIdentifiers(graphIdentifier).get(0);
+        VertexIdentifier vertexIdentifier = vertexPatternExpr.generateIdentifiers(graphIdentifier).get(0);
         List<List<String>> vertexKey = elementLookupTable.getVertexKey(vertexIdentifier);
         List<Expression> vertexKeyExprList = LowerRewritingUtil.buildAccessorList(sourceExpr, vertexKey).stream()
                 .map(e -> (Expression) e).collect(Collectors.toList());

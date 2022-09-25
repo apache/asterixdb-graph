@@ -21,7 +21,7 @@ package org.apache.asterix.graphix.function.rewrite;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.graphix.function.prepare.AbstractElementPrepare;
-import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
+import org.apache.asterix.graphix.lang.rewrite.GraphixRewritingContext;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.expression.FieldAccessor;

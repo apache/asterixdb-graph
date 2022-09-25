@@ -23,21 +23,20 @@ import java.util.Set;
 import org.apache.asterix.algebra.base.ILangExpressionToPlanTranslatorFactory;
 import org.apache.asterix.compiler.provider.IRuleSetFactory;
 import org.apache.asterix.compiler.provider.SqlppCompilationProvider;
+import org.apache.asterix.graphix.algebra.compiler.option.ElementEvaluationOption;
+import org.apache.asterix.graphix.algebra.compiler.option.SchemaDecorateEdgeOption;
+import org.apache.asterix.graphix.algebra.compiler.option.SchemaDecorateVertexOption;
+import org.apache.asterix.graphix.algebra.compiler.option.SemanticsNavigationOption;
+import org.apache.asterix.graphix.algebra.compiler.option.SemanticsPatternOption;
 import org.apache.asterix.graphix.algebra.translator.GraphixExpressionToPlanTranslatorFactory;
 import org.apache.asterix.graphix.lang.parser.GraphixParserFactory;
-import org.apache.asterix.graphix.lang.rewrites.GraphixRewriterFactory;
-import org.apache.asterix.graphix.lang.rewrites.print.GraphixASTPrintVisitorFactory;
+import org.apache.asterix.graphix.lang.rewrite.GraphixRewriterFactory;
+import org.apache.asterix.graphix.lang.rewrite.print.GraphixASTPrintVisitorFactory;
 import org.apache.asterix.lang.common.base.IAstPrintVisitorFactory;
 import org.apache.asterix.lang.common.base.IParserFactory;
 import org.apache.asterix.lang.common.base.IRewriterFactory;
 
 public class GraphixCompilationProvider extends SqlppCompilationProvider {
-    public static final String PRINT_REWRITE_METADATA_CONFIG = "graphix.print-rewrite";
-    public static final String RESOLVER_METADATA_CONFIG = "graphix.resolver";
-    public static final String RESOLVER_ITERATION_MAX_METADATA_CONFIG = "graphix.max-resolution-iterations";
-    public static final String MATCH_EVALUATION_METADATA_CONFIG = "graphix.match-evaluation";
-    public static final String EDGE_STRATEGY_METADATA_CONFIG = "graphix.edge-strategy";
-
     @Override
     public IParserFactory getParserFactory() {
         return new GraphixParserFactory();
@@ -66,8 +65,11 @@ public class GraphixCompilationProvider extends SqlppCompilationProvider {
     @Override
     public Set<String> getCompilerOptions() {
         Set<String> parentConfigurableParameters = super.getCompilerOptions();
-        parentConfigurableParameters.addAll(Set.of(PRINT_REWRITE_METADATA_CONFIG, MATCH_EVALUATION_METADATA_CONFIG,
-                RESOLVER_METADATA_CONFIG, RESOLVER_ITERATION_MAX_METADATA_CONFIG, EDGE_STRATEGY_METADATA_CONFIG));
+        parentConfigurableParameters.add(ElementEvaluationOption.OPTION_KEY_NAME);
+        parentConfigurableParameters.add(SchemaDecorateEdgeOption.OPTION_KEY_NAME);
+        parentConfigurableParameters.add(SchemaDecorateVertexOption.OPTION_KEY_NAME);
+        parentConfigurableParameters.add(SemanticsNavigationOption.OPTION_KEY_NAME);
+        parentConfigurableParameters.add(SemanticsPatternOption.OPTION_KEY_NAME);
         return parentConfigurableParameters;
     }
 }

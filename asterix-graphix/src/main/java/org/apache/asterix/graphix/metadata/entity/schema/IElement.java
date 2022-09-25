@@ -20,17 +20,17 @@ package org.apache.asterix.graphix.metadata.entity.schema;
 
 import java.io.Serializable;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.IElementIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 
 /**
  * Metadata interface for a graph element (i.e. edge or vertex). An element has the following:
- * 1. A {@link GraphElementIdentifier}, to uniquely identify the element across other graph elements.
- * 2. A {@link ElementLabel} unique amongst the element classes (e.g. an edge label is unique amongst all graph edges).
+ * 1. A {@link Serializable}, to uniquely identify the element across other graph elements.
+ * 2. A {@link ElementLabel} unique amongst the element classes.
  * 3. A non-null SQL++ string, representing a graph element body.
  */
 public interface IElement extends Serializable {
-    GraphElementIdentifier getIdentifier();
+    IElementIdentifier getIdentifier();
 
     ElementLabel getLabel();
 

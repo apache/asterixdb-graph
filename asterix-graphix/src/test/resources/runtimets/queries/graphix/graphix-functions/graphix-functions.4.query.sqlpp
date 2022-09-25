@@ -43,7 +43,7 @@ SELECT      DIRECTION(e) AS direction,
             LABEL(e) AS edgeLabel,
             LABEL(n1) AS n1Label,
             LABEL(n2) AS n2Label,
-            LABEL(sourceVertex) AS sourceVertexLabel,
-            LABEL(destVertex) AS destVertexLabel,
+            LABEL(sourceVertex) AS sourceElementLabel,
+            LABEL(destVertex) AS destElementLabel,
             EDGE_DETAIL(e) AS edgeDetail
 ORDER BY    direction, edgeLabel, n1Label, n2Label, edgeDetail;

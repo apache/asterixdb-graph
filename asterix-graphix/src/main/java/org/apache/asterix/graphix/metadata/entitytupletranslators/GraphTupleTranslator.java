@@ -126,7 +126,7 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
 
             // Read in the label name.
             IAObject labelNameObj = VERTEX_RECORD_DETAIL.getObjectForField(vertex, FIELD_NAME_LABEL);
-            ElementLabel vertexLabel = new ElementLabel(((AString) labelNameObj).getStringValue());
+            ElementLabel elementLabel = new ElementLabel(((AString) labelNameObj).getStringValue(), false);
 
             // Read in the primary key fields.
             List<List<String>> primaryKeyFields = new ArrayList<>();
@@ -142,14 +142,14 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
             String definitionBody = ((AString) bodyObj).getStringValue();
 
             // Read in the vertex definition, and perform validation of the metadata record.
-            schemaBuilder.addVertex(vertexLabel, primaryKeyFields, definitionBody);
+            schemaBuilder.addVertex(elementLabel, primaryKeyFields, definitionBody);
             switch (schemaBuilder.getLastError()) {
                 case NO_ERROR:
                     break;
 
                 case VERTEX_LABEL_CONFLICT:
                     throw new AsterixException(ErrorCode.METADATA_ERROR,
-                            "Conflicting vertex label found: " + vertexLabel);
+                            "Conflicting vertex label found: " + elementLabel);
 
                 default:
                     throw new AsterixException(ErrorCode.METADATA_ERROR,
@@ -165,15 +165,16 @@ public class GraphTupleTranslator extends AbstractTupleTranslator<Graph> {
 
             // Read in the label name.
             IAObject labelNameObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_LABEL);
-            ElementLabel edgeLabel = new ElementLabel(((AString) labelNameObj).getStringValue());
+            ElementLabel edgeLabel = new ElementLabel(((AString) labelNameObj).getStringValue(), false);
 
             // Read in the destination label name.
             IAObject destinationLabelNameObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_DESTINATION_LABEL);
-            ElementLabel destinationLabel = new ElementLabel(((AString) destinationLabelNameObj).getStringValue());
+            AString destinationLabelString = (AString) destinationLabelNameObj;
+            ElementLabel destinationLabel = new ElementLabel(destinationLabelString.getStringValue(), false);
 
             // Read in the source label name.
             IAObject sourceLabelNameObj = EDGE_RECORD_DETAIL.getObjectForField(edge, FIELD_NAME_SOURCE_LABEL);
-            ElementLabel sourceLabel = new ElementLabel(((AString) sourceLabelNameObj).getStringValue());
+            ElementLabel sourceLabel = new ElementLabel(((AString) sourceLabelNameObj).getStringValue(), false);
 
             // Read in the source key fields.
             List<List<String>> sourceKeyFields = new ArrayList<>();

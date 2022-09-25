@@ -21,24 +21,24 @@ package org.apache.asterix.graphix.metadata.entity.schema;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.EdgeIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 
 /**
  * Metadata representation of an edge. An edge consists of the following:
- * 1. A {@link GraphElementIdentifier}, to uniquely identify the edge across other graph elements.
- * 2. An {@link ElementLabel} instance associated with the source vertex.
- * 3. An {@link ElementLabel} instance associated with the destination vertex.
- * 4. A list of source key fields, associated with the definition body.
- * 5. A list of destination key fields, associated with the definition body.
- * 6. A SQL++ string denoting the definition body.
+ * <ul>
+ *  <li>A {@link EdgeIdentifier}, to uniquely identify the edge across other graph elements.</li>
+ *  <li>An {@link ElementLabel} instance associated with the source vertex.</li>
+ *  <li>An {@link ElementLabel} instance associated with the destination vertex.</li>
+ *  <li>A list of source key fields, associated with the definition body.</li>
+ *  <li>A list of destination key fields, associated with the definition body.</li>
+ *  <li>A SQL++ string denoting the definition body.</li>
+ * </ul>
  */
 public class Edge implements IElement {
     private static final long serialVersionUID = 1L;
 
-    private final GraphElementIdentifier identifier;
-    private final ElementLabel sourceVertexLabel;
-    private final ElementLabel destinationVertexLabel;
+    private final EdgeIdentifier identifier;
     private final List<List<String>> sourceKeyFieldNames;
     private final List<List<String>> destinationKeyFieldNames;
     private final String definitionBody;
@@ -46,11 +46,9 @@ public class Edge implements IElement {
     /**
      * Use {@link Schema.Builder} to build Edge instances instead of this constructor.
      */
-    Edge(GraphElementIdentifier identifier, ElementLabel sourceVertexLabel, ElementLabel destinationVertexLabel,
-            List<List<String>> sourceKeyFieldNames, List<List<String>> destKeyFieldNames, String definitionBody) {
+    Edge(EdgeIdentifier identifier, List<List<String>> sourceKeyFieldNames, List<List<String>> destKeyFieldNames,
+            String definitionBody) {
         this.identifier = Objects.requireNonNull(identifier);
-        this.sourceVertexLabel = Objects.requireNonNull(sourceVertexLabel);
-        this.destinationVertexLabel = Objects.requireNonNull(destinationVertexLabel);
         this.sourceKeyFieldNames = Objects.requireNonNull(sourceKeyFieldNames);
         this.destinationKeyFieldNames = Objects.requireNonNull(destKeyFieldNames);
         this.definitionBody = Objects.requireNonNull(definitionBody);
@@ -82,11 +80,11 @@ public class Edge implements IElement {
     }
 
     public ElementLabel getDestinationLabel() {
-        return destinationVertexLabel;
+        return identifier.getDestinationLabel();
     }
 
     public ElementLabel getSourceLabel() {
-        return sourceVertexLabel;
+        return identifier.getSourceLabel();
     }
 
     public List<List<String>> getSourceKeyFieldNames() {
@@ -98,13 +96,13 @@ public class Edge implements IElement {
     }
 
     @Override
-    public GraphElementIdentifier getIdentifier() {
+    public EdgeIdentifier getIdentifier() {
         return identifier;
     }
 
     @Override
     public ElementLabel getLabel() {
-        return identifier.getElementLabel();
+        return identifier.getEdgeLabel();
     }
 
     @Override

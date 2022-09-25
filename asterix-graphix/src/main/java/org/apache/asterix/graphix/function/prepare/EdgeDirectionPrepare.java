@@ -38,7 +38,7 @@ public class EdgeDirectionPrepare extends AbstractElementPrepare {
         EdgePatternExpr edgePatternExpr = (EdgePatternExpr) inputExpr;
         EdgeDescriptor edgeDescriptor = edgePatternExpr.getEdgeDescriptor();
         EdgeDescriptor.EdgeDirection edgeDirection = edgeDescriptor.getEdgeDirection();
-        LiteralExpr fieldValueExpr = new LiteralExpr(new StringLiteral(edgeDirection.toString()));
+        LiteralExpr fieldValueExpr = new LiteralExpr(new StringLiteral(edgeDirection.name()));
         LiteralExpr fieldNameExpr = new LiteralExpr(new StringLiteral(IDENTIFIER.getValue()));
         FieldBinding fieldBinding = new FieldBinding(fieldNameExpr, fieldValueExpr);
         schemaRecord.getFbList().add(fieldBinding);

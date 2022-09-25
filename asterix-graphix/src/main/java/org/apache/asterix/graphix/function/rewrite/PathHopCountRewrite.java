@@ -25,8 +25,8 @@ import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.exceptions.ErrorCode;
 import org.apache.asterix.common.functions.FunctionSignature;
 import org.apache.asterix.graphix.function.GraphixFunctionIdentifiers;
-import org.apache.asterix.graphix.lang.rewrites.GraphixRewritingContext;
-import org.apache.asterix.graphix.lang.rewrites.lower.action.PathPatternAction;
+import org.apache.asterix.graphix.lang.rewrite.GraphixRewritingContext;
+import org.apache.asterix.graphix.type.MaterializePathTypeComputer;
 import org.apache.asterix.lang.common.base.Expression;
 import org.apache.asterix.lang.common.expression.CallExpr;
 import org.apache.asterix.lang.common.expression.FieldAccessor;
@@ -44,7 +44,7 @@ public class PathHopCountRewrite implements IFunctionRewrite {
 
         // Access the edges in our path.
         List<Expression> countFunctionArguments = new ArrayList<>();
-        Identifier pathEdgeIdentifier = new Identifier(PathPatternAction.PATH_EDGES_FIELD_NAME);
+        Identifier pathEdgeIdentifier = new Identifier(MaterializePathTypeComputer.EDGES_FIELD_NAME);
         FieldAccessor pathEdgeAccess = new FieldAccessor(callExpr.getExprList().get(0), pathEdgeIdentifier);
         pathEdgeAccess.setSourceLocation(callExpr.getSourceLocation());
         countFunctionArguments.add(pathEdgeAccess);

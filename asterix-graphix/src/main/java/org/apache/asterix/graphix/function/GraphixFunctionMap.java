@@ -34,12 +34,14 @@ import org.apache.asterix.graphix.function.rewrite.PathEdgesRewrite;
 import org.apache.asterix.graphix.function.rewrite.PathHopCountRewrite;
 import org.apache.asterix.graphix.function.rewrite.PathVerticesRewrite;
 import org.apache.asterix.graphix.function.rewrite.SchemaAccessRewrite;
+import org.apache.asterix.graphix.lang.rewrite.visitor.GraphixFunctionCallVisitor;
+import org.apache.asterix.graphix.lang.rewrite.visitor.SchemaEnrichmentVisitor;
 import org.apache.asterix.lang.common.struct.Identifier;
 import org.apache.hyracks.algebricks.core.algebra.functions.FunctionIdentifier;
 
 /**
- * @see org.apache.asterix.graphix.lang.rewrites.visitor.SchemaEnrichmentVisitor
- * @see org.apache.asterix.graphix.lang.rewrites.visitor.GraphixFunctionCallVisitor
+ * @see SchemaEnrichmentVisitor
+ * @see GraphixFunctionCallVisitor
  */
 public class GraphixFunctionMap {
     private final static Map<FunctionIdentifier, IFunctionPrepare> graphixFunctionPrepareMap;

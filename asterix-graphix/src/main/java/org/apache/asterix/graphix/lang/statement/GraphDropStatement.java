@@ -24,8 +24,8 @@ import org.apache.asterix.algebra.extension.ExtensionStatement;
 import org.apache.asterix.app.translator.QueryTranslator;
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.metadata.DataverseName;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
 import org.apache.asterix.graphix.lang.util.GraphStatementHandlingUtil;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 import org.apache.asterix.metadata.declared.MetadataProvider;
 import org.apache.asterix.translator.IRequestParameters;
@@ -36,9 +36,11 @@ import org.apache.hyracks.api.exceptions.HyracksDataException;
 /**
  * Statement for removing a {@link org.apache.asterix.graphix.lang.expression.GraphConstructor} instance from our
  * metadata.
- * - A DROP GRAPH statement MUST always include a graph name.
- * - We can specify "DROP ... IF EXISTS" to drop the graph if it exists, and not raise an error if the graph doesn't
- * exist.
+ * <ul>
+ *  <li>A DROP GRAPH statement MUST always include a graph name.</li>
+ *  <li>We can specify "DROP ... IF EXISTS" to drop the graph if it exists, and not raise an error if the graph
+ *  doesn't exist,</li>
+ * </ul>
  */
 public class GraphDropStatement extends ExtensionStatement {
     private final DataverseName dataverseName;

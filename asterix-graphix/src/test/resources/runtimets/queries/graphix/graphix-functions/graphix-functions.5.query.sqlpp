@@ -27,7 +27,7 @@ FROM GRAPH  VERTEX (:User)
                    AS ( FROM    Yelp.Friends F
                         SELECT  F.user_id AS user_id,
                                 F.friend AS friend )
-MATCH       (n1)-[e:{1,2}]->(n2)->(n3) AS p
+MATCH       (n1)-[e{1,2}]->(n2)->(n3) AS p
 SELECT      EDGES(p) AS pEdges,
             EDGES(e) AS eEdges,
             HOP_COUNT(p) AS pHopCount,

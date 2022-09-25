@@ -18,23 +18,26 @@
  */
 package org.apache.asterix.graphix.metadata.entity.schema;
 
-import static org.apache.asterix.graphix.common.metadata.GraphElementIdentifier.Kind.EDGE;
-import static org.apache.asterix.graphix.common.metadata.GraphElementIdentifier.Kind.VERTEX;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
-import org.apache.asterix.graphix.common.metadata.GraphElementIdentifier;
+import org.apache.asterix.graphix.common.metadata.EdgeIdentifier;
 import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
+import org.apache.asterix.graphix.common.metadata.VertexIdentifier;
 import org.apache.asterix.graphix.lang.struct.ElementLabel;
 
 /**
  * Metadata representation of a graph schema. A graph schema consists of:
- * 1. A list of {@link Vertex} instances.
- * 2. A list of {@link Edge} instances, which link the aforementioned vertices.
+ * <ul>
+ *  <li>A list of {@link Vertex} instances.</li>
+ *  <li>A list of {@link Edge} instances, which link the aforementioned vertices.</li>
+ * </ul>
  */
 public class Schema implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -59,7 +62,7 @@ public class Schema implements Serializable {
 
     public static class Builder {
         private final Map<ElementLabel, Vertex> vertexLabelMap = new HashMap<>();
-        private final Map<ElementLabel, List<Edge>> edgeLabelMap = new HashMap<>();
+        private final Map<EdgeLabel, List<Edge>> edgeLabelMap = new HashMap<>();
 
         // We aim to populate the schema object below.
         private final Schema workingSchema;
@@ -74,12 +77,12 @@ public class Schema implements Serializable {
         /**
          * @return Null if a vertex with the same label already exists. The vertex to-be-added otherwise.
          */
-        public Vertex addVertex(ElementLabel vertexLabel, List<List<String>> primaryKeyFieldNames, String definition) {
-            if (!vertexLabelMap.containsKey(vertexLabel)) {
-                GraphElementIdentifier identifier = new GraphElementIdentifier(graphIdentifier, VERTEX, vertexLabel);
+        public Vertex addVertex(ElementLabel elementLabel, List<List<String>> primaryKeyFieldNames, String definition) {
+            if (!vertexLabelMap.containsKey(elementLabel)) {
+                VertexIdentifier identifier = new VertexIdentifier(graphIdentifier, elementLabel);
                 Vertex newVertex = new Vertex(identifier, primaryKeyFieldNames, definition);
                 workingSchema.vertexList.add(newVertex);
-                vertexLabelMap.put(vertexLabel, newVertex);
+                vertexLabelMap.put(elementLabel, newVertex);
                 return newVertex;
 
             } else {
@@ -102,22 +105,27 @@ public class Schema implements Serializable {
             } else if (!vertexLabelMap.containsKey(destinationLabel)) {
                 lastError = Error.DESTINATION_VERTEX_NOT_FOUND;
                 return null;
+            }
 
-            } else if (edgeLabelMap.containsKey(edgeLabel)) {
+            // Ensure we have unique <source, edge, dest> triples.
+            EdgeLabel edgePatternLabel = new EdgeLabel();
+            edgePatternLabel.endpointLabels.add(sourceLabel);
+            edgePatternLabel.endpointLabels.add(destinationLabel);
+            edgePatternLabel.edgeLabel = edgeLabel;
+            if (edgeLabelMap.containsKey(edgePatternLabel)) {
                 lastError = Error.EDGE_LABEL_CONFLICT;
                 return null;
             }
 
             // Update our schema.
-            GraphElementIdentifier identifier = new GraphElementIdentifier(graphIdentifier, EDGE, edgeLabel);
-            Edge newEdge = new Edge(identifier, sourceLabel, destinationLabel, sourceKeyFieldNames,
-                    destinationKeyFieldNames, definitionBody);
+            EdgeIdentifier identifier = new EdgeIdentifier(graphIdentifier, sourceLabel, edgeLabel, destinationLabel);
+            Edge newEdge = new Edge(identifier, sourceKeyFieldNames, destinationKeyFieldNames, definitionBody);
             workingSchema.edgeList.add(newEdge);
 
             // Update our edge label map.
             ArrayList<Edge> edgeList = new ArrayList<>();
             edgeList.add(newEdge);
-            edgeLabelMap.put(edgeLabel, edgeList);
+            edgeLabelMap.put(edgePatternLabel, edgeList);
             return newEdge;
         }
 
@@ -135,6 +143,29 @@ public class Schema implements Serializable {
             EDGE_LABEL_CONFLICT,
             SOURCE_VERTEX_NOT_FOUND,
             DESTINATION_VERTEX_NOT_FOUND
+        }
+    }
+
+    private static class EdgeLabel {
+        public Set<ElementLabel> endpointLabels = new HashSet<>();
+        public ElementLabel edgeLabel = null;
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(edgeLabel, endpointLabels);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o instanceof EdgeLabel) {
+                EdgeLabel that = (EdgeLabel) o;
+                return Objects.equals(this.endpointLabels, that.endpointLabels)
+                        && Objects.equals(this.edgeLabel, that.edgeLabel);
+            }
+            return false;
         }
     }
 }

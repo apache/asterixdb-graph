@@ -18,45 +18,58 @@
  */
 package org.apache.asterix.graphix.lang.clause;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 import org.apache.asterix.common.exceptions.CompilationException;
 import org.apache.asterix.common.metadata.DataverseName;
+import org.apache.asterix.graphix.common.metadata.GraphIdentifier;
 import org.apache.asterix.graphix.lang.expression.GraphConstructor;
-import org.apache.asterix.graphix.lang.rewrites.visitor.IGraphixLangVisitor;
-import org.apache.asterix.lang.common.base.AbstractClause;
+import org.apache.asterix.graphix.lang.visitor.base.IGraphixLangVisitor;
+import org.apache.asterix.lang.common.base.AbstractExtensionClause;
 import org.apache.asterix.lang.common.struct.Identifier;
 import org.apache.asterix.lang.common.visitor.base.ILangVisitor;
 import org.apache.asterix.lang.sqlpp.clause.AbstractBinaryCorrelateClause;
+import org.apache.asterix.lang.sqlpp.clause.FromClause;
+import org.apache.asterix.lang.sqlpp.visitor.base.ISqlppVisitor;
+import org.apache.asterix.metadata.declared.MetadataProvider;
 
 /**
- * The logical starting AST node for Graphix queries. A FROM-GRAPH node includes the following:
- * - Either a {@link GraphConstructor} OR a [dataverse, graph name] pair. The former indicates that we are dealing with
- * an anonymous graph, while the latter indicates that we must search our metadata for the graph.
- * - A list of {@link MatchClause} nodes, with a minimum size of one. The first MATCH node type must always be LEADING.
- * - A list of {@link AbstractBinaryCorrelateClause} nodes, which may be empty. These include UNNEST and explicit JOINs.
+ * The logical starting AST node for Graphix queries. Lowering a Graphix AST involves setting the
+ * {@link AbstractExtensionClause}, initially set to null. A FROM-GRAPH node includes the following:
+ * <ul>
+ *  <li>Either a {@link GraphConstructor} OR a [dataverse, graph name] pair. The former indicates that we are dealing
+ *  with an anonymous graph, while the latter indicates that we must search our metadata for the graph.</li>
+ *  <li>A list of {@link MatchClause} nodes, with a minimum size of one. The first MATCH node type must always be
+ *  LEADING.</li>
+ *  <li>A list of {@link AbstractBinaryCorrelateClause} nodes, which may be empty. These include UNNEST and explicit
+ *  JOINs.</li>
+ * </ul>
  */
-public class FromGraphClause extends AbstractClause {
-    // A FROM-MATCH must either have a graph constructor...
+public class FromGraphClause extends FromClause {
+    // A non-lowered FROM-GRAPH-CLAUSE must either have a graph constructor...
     private final GraphConstructor graphConstructor;
 
     // Or a reference to a named graph (both cannot be specified).
     private final DataverseName dataverse;
     private final Identifier name;
 
-    // Every FROM-MATCH **MUST** include at-least a single MATCH clause. Correlated clauses are optional.
+    // Every non-lowered FROM-GRAPH-CLAUSE **MUST** include at-least a single MATCH clause.
     private final List<MatchClause> matchClauses;
     private final List<AbstractBinaryCorrelateClause> correlateClauses;
 
+    // After lowering, we should have built an extension clause of some sort.
+    private AbstractExtensionClause lowerClause = null;
+
     public FromGraphClause(DataverseName dataverse, Identifier name, List<MatchClause> matchClauses,
             List<AbstractBinaryCorrelateClause> correlateClauses) {
+        super(Collections.emptyList());
         this.graphConstructor = null;
         this.dataverse = dataverse;
         this.name = Objects.requireNonNull(name);
         this.matchClauses = Objects.requireNonNull(matchClauses);
         this.correlateClauses = Objects.requireNonNull(correlateClauses);
-
         if (matchClauses.isEmpty()) {
             throw new IllegalArgumentException("FROM-MATCH requires at least one MATCH clause.");
         }
@@ -64,15 +77,34 @@ public class FromGraphClause extends AbstractClause {
 
     public FromGraphClause(GraphConstructor graphConstructor, List<MatchClause> matchClauses,
             List<AbstractBinaryCorrelateClause> correlateClauses) {
+        super(Collections.emptyList());
         this.graphConstructor = Objects.requireNonNull(graphConstructor);
         this.dataverse = null;
         this.name = null;
         this.matchClauses = Objects.requireNonNull(matchClauses);
         this.correlateClauses = Objects.requireNonNull(correlateClauses);
-
         if (matchClauses.isEmpty()) {
             throw new IllegalArgumentException("FROM-MATCH requires at least one MATCH clause.");
         }
+    }
+
+    public FromGraphClause(AbstractExtensionClause lowerClause) {
+        super(Collections.emptyList());
+        this.lowerClause = Objects.requireNonNull(lowerClause);
+        this.graphConstructor = null;
+        this.dataverse = null;
+        this.name = null;
+        this.matchClauses = Collections.emptyList();
+        this.correlateClauses = Collections.emptyList();
+    }
+
+    public GraphIdentifier getGraphIdentifier(MetadataProvider metadataProvider) {
+        DataverseName dataverseName = metadataProvider.getDefaultDataverseName();
+        if (this.dataverse != null) {
+            dataverseName = this.dataverse;
+        }
+        return (graphConstructor == null) ? new GraphIdentifier(dataverseName, name.getValue())
+                : new GraphIdentifier(dataverseName, graphConstructor.getInstanceID());
     }
 
     public GraphConstructor getGraphConstructor() {
@@ -95,25 +127,47 @@ public class FromGraphClause extends AbstractClause {
         return correlateClauses;
     }
 
-    @Override
-    public ClauseType getClauseType() {
-        return null;
+    public AbstractExtensionClause getLowerClause() {
+        return lowerClause;
+    }
+
+    public void setLowerClause(AbstractExtensionClause lowerClause) {
+        this.lowerClause = lowerClause;
     }
 
     @Override
     public <R, T> R accept(ILangVisitor<R, T> visitor, T arg) throws CompilationException {
-        return ((IGraphixLangVisitor<R, T>) visitor).visit(this, arg);
+        if (visitor instanceof IGraphixLangVisitor) {
+            return ((IGraphixLangVisitor<R, T>) visitor).visit(this, arg);
+
+        } else if (lowerClause != null) {
+            return visitor.visit(lowerClause.getVisitorExtension(), arg);
+
+        } else {
+            return ((ISqlppVisitor<R, T>) visitor).visit(this, arg);
+        }
     }
 
     @Override
     public String toString() {
-        return (graphConstructor != null) ? graphConstructor.toString()
-                : ((dataverse == null) ? name.getValue() : (dataverse + "." + name));
+        if (lowerClause != null) {
+            return lowerClause.toString();
+
+        } else if (graphConstructor != null) {
+            return graphConstructor.toString();
+
+        } else if (dataverse != null && name != null) {
+            return dataverse + "." + name.getValue();
+
+        } else if (dataverse == null && name != null) {
+            return name.getValue();
+        }
+        throw new IllegalStateException();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(graphConstructor, dataverse, name, matchClauses, correlateClauses);
+        return Objects.hash(graphConstructor, dataverse, name, matchClauses, correlateClauses, lowerClause);
     }
 
     @Override
@@ -127,6 +181,7 @@ public class FromGraphClause extends AbstractClause {
         FromGraphClause that = (FromGraphClause) object;
         return Objects.equals(graphConstructor, that.graphConstructor) && Objects.equals(dataverse, that.dataverse)
                 && Objects.equals(name, that.name) && matchClauses.equals(that.matchClauses)
-                && Objects.equals(correlateClauses, that.correlateClauses);
+                && Objects.equals(correlateClauses, that.correlateClauses)
+                && Objects.equals(lowerClause, that.lowerClause);
     }
 }

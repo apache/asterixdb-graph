@@ -69,8 +69,24 @@ public class GraphixFunctionIdentifiers {
     public static final FunctionIdentifier PATH_EDGES =
             new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "path-edges", 1);
 
+    // Private functions used internally to enforce navigation semantics.
+    public static final FunctionIdentifier IS_DISTINCT_EDGE =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "is-distinct-edge", 2);
+    public static final FunctionIdentifier IS_DISTINCT_VERTEX =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "is-distinct-vertex", 2);
+    public static final FunctionIdentifier IS_DISTINCT_EVERYTHING =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "is-distinct-everything", 3);
+
+    // Private functions used internally to manage a path during navigation.
+    public static final FunctionIdentifier CREATE_INTERNAL_PATH =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "create-internal-path", 1);
+    public static final FunctionIdentifier APPEND_INTERNAL_PATH =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "append-internal-path", 3);
+    public static final FunctionIdentifier MATERIALIZE_PATH =
+            new FunctionIdentifier(GRAPHIX_DV.getCanonicalForm(), "materialize-path", 1);
+
     static {
-        // Register all the functions above.
+        // Register the non-internal functions above.
         functionIdentifierMap = new HashMap<>();
         Consumer<FunctionIdentifier> functionRegister = f -> functionIdentifierMap.put(f.getName(), f);
         functionRegister.accept(ELEMENT_LABEL);
